@@ -27,20 +27,6 @@
 
 # COMMAND ----------
 
-# MAGIC %md
-# MAGIC <iframe  
-# MAGIC src="//fast.wistia.net/embed/iframe/bbyhkgxzoz?videoFoam=true"
-# MAGIC style="border:1px solid #1cb1c2;"
-# MAGIC allowtransparency="true" scrolling="no" class="wistia_embed"
-# MAGIC name="wistia_embed" allowfullscreen mozallowfullscreen webkitallowfullscreen
-# MAGIC oallowfullscreen msallowfullscreen width="640" height="360" ></iframe>
-# MAGIC <div>
-# MAGIC <a target="_blank" href="https://fast.wistia.net/embed/iframe/bbyhkgxzoz?seo=false">
-# MAGIC   <img alt="Opens in new tab" src="https://files.training.databricks.com/static/images/external-link-icon-16x16.png"/>&nbsp;Watch full-screen.</a>
-# MAGIC </div>
-
-# COMMAND ----------
-
 # MAGIC %md-sandbox
 # MAGIC ### Managing Machine Learning Models
 # MAGIC 

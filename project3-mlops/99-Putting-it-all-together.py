@@ -1,6 +1,6 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # Capstone Project: Managing the Machine Learning Lifecycle
+# MAGIC # Putting it all together: Managing the Machine Learning Lifecycle
 # MAGIC 
 # MAGIC Create a workflow that includes pre-processing logic, the optimal ML algorithm and hyperparameters, and post-processing logic.
 # MAGIC 
@@ -396,8 +396,6 @@ print(pd.read_csv(second_prediction_path))
 # MAGIC %md
 # MAGIC 
 # MAGIC <h2><img src="https://files.training.databricks.com/images/105/logo_spark_tiny.png"> All done!</h2>
-# MAGIC 
-# MAGIC Thank you for your participation!
 
 # COMMAND ----------
 

@@ -1,7 +1,7 @@
 # Databricks notebook source
 # MAGIC %md-sandbox
 # MAGIC <img src="https://files.training.databricks.com/images/Apache-Spark-Logo_TM_200px.png" style="float: left: margin: 20px"/>
-# MAGIC # Course Overview and Setup
+# MAGIC # Overview and Setup
 # MAGIC ## MLflow
 # MAGIC ### Managing the Machine Learning Lifecycle
 # MAGIC 
@@ -26,9 +26,6 @@
 # MAGIC - A cluster configured with **8 cores** and **DBR 7.0 ML**
 # MAGIC - Python (`pandas`, `sklearn`, `numpy`)
 # MAGIC - Background in machine learning and data science
-# MAGIC 
-# MAGIC <img alt="Caution" title="Caution" style="vertical-align: text-bottom; position: relative; height:1.3em; top:0.0em" src="https://files.training.databricks.com/static/images/icon-warning.svg"/> **Certain features used in this course, such as the notebooks API, are only available to paid or trial subscription users of Databricks.**
-# MAGIC If you are using the Databricks Community Edition, click the `Upgrade` button on the landing page <a href="https://accounts.cloud.databricks.com/registration.html#login" target="_blank">or navigate here</a> to start a free trial.
 
 # COMMAND ----------
 
@@ -65,27 +62,11 @@
 # MAGIC 
 # MAGIC <img alt="Caution" title="Caution" style="vertical-align: text-bottom; position: relative; height:1.3em; top:0.0em" src="https://files.training.databricks.com/static/images/icon-warning.svg"/> Additionally, private installations of Databricks (e.g., accounts provided by your employer) may have other limitations imposed, such as aggressive permissions and or language restrictions such as prohibiting the use of Scala which will further inhibit some courses from being executed in those environments.
 # MAGIC 
-# MAGIC <img alt="Hint" title="Hint" style="vertical-align: text-bottom; position: relative; height:1.75em; top:0.3em" src="https://files.training.databricks.com/static/images/icon-light-bulb.svg"/>&nbsp;**Hint:** All courses provided by Databricks Academy rely on custom variables, functions, and settings to provide you with the best experience possible.
-# MAGIC 
 # MAGIC For each lesson to execute correctly, please make sure to run the **`Classroom-Setup`** cell at the start of each lesson (see the next cell) and the **`Classroom-Cleanup`** cell at the end of each lesson.
 
 # COMMAND ----------
 
 # MAGIC %run ./Includes/Classroom-Setup
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC <iframe  
-# MAGIC src="//fast.wistia.net/embed/iframe/wma42ap7ke?videoFoam=true"
-# MAGIC style="border:1px solid #1cb1c2;"
-# MAGIC allowtransparency="true" scrolling="no" class="wistia_embed"
-# MAGIC name="wistia_embed" allowfullscreen mozallowfullscreen webkitallowfullscreen
-# MAGIC oallowfullscreen msallowfullscreen width="640" height="360" ></iframe>
-# MAGIC <div>
-# MAGIC <a target="_blank" href="https://fast.wistia.net/embed/iframe/wma42ap7ke?seo=false">
-# MAGIC   <img alt="Opens in new tab" src="https://files.training.databricks.com/static/images/external-link-icon-16x16.png"/>&nbsp;Watch full-screen.</a>
-# MAGIC </div>
 
 # COMMAND ----------
 
