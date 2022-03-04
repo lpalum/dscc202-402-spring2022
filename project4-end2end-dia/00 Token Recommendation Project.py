@@ -3,10 +3,14 @@
 # MAGIC ## Project Description
 # MAGIC In this final project, you and your group will be developing an end-to-end Data-Intensive Application (DIA) that recommends ERC-20 Tokens that a given wallet address may be interested in based on their historic similarity to other wallets on the network.
 # MAGIC 
+# MAGIC <b>References</b>
+# MAGIC - [What is Ethereum?](https://www.preethikasireddy.com/post/how-does-ethereum-work-anyway)
+# MAGIC - [What is the ERC-20 Token Standard?](https://www.investopedia.com/tech/why-crypto-users-need-know-about-erc20-token-standard)
+# MAGIC 
 # MAGIC Consider this illustration of the application output and our process diagram.
 # MAGIC <table border=0>
 # MAGIC   <tr><td><h2>Application</h2></td><td><h2>Process</h2></td></tr>
-# MAGIC   <tr><td>![Image](https://data-science-at-scale.s3.amazonaws.com/images/rec-application.png)</td><td><img src='https://data-science-at-scale.s3.amazonaws.com/images/DIA+Framework-DIA+Process+-+1.png' width=680></td></tr>
+# MAGIC   <tr><td><img src='https://data-science-at-scale.s3.amazonaws.com/images/rec-application.png' width=70%></td><td><img src='https://data-science-at-scale.s3.amazonaws.com/images/DIA+Framework-DIA+Process+-+1.png' width=680></td></tr>
 # MAGIC </table>
 # MAGIC 
 # MAGIC As a starting point for this project all groups will have access to a Dela Lake DB named ethereumetl which contains eight raw (Bronze) tables as specified by these json schemas: [Ethereum Raw Table Schemas](https://github.com/blockchain-etl/ethereum-etl-airflow/tree/master/dags/resources/stages/raw/schemas)
