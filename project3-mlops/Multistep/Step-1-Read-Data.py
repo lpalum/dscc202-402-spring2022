@@ -11,14 +11,16 @@ data_input_path = dbutils.widgets.get("data_input_path").strip()
 
 # Log an artifact from the input path
 import mlflow
-
-with mlflow.start_run() as run:
+name = 'multistep'
+with mlflow.start_run(run_name=name) as run:
   # Log the data
   data_path = "data-csv"
   mlflow.log_artifact(data_input_path, data_path)
   
-  artifactURI = mlflow.get_artifact_uri()
-  full_path = dbutils.fs.ls(artifactURI + "/" + data_path)[0].path
+  run_id = run.info.run_id
+  path = data_path
+  #artifactURI = mlflow.get_artifact_uri()
+  #full_path = dbutils.fs.ls(artifactURI + "/" + data_path)[0].path
 
 # COMMAND ----------
 
@@ -28,7 +30,9 @@ import json
 dbutils.notebook.exit(json.dumps({
   "status": "OK",
   "data_input_path": data_input_path,
-  "data_output_path": full_path.replace("dbfs:", "/dbfs")
+  "run_id":run_id,
+  "path":path,
+  #"data_output_path": full_path.replace("dbfs:", "/dbfs")
 }))
 
 

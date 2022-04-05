@@ -1,14 +1,29 @@
 # Databricks notebook source
 # Create widget for parameter passing into the notebook
-dbutils.widgets.text("artifact_URI", "")
+dbutils.widgets.text("run_id", "")
+dbutils.widgets.text("path", "")
 dbutils.widgets.text("n_estimators", "10")
 dbutils.widgets.text("max_depth", "20")
 dbutils.widgets.text("max_features", "auto")
 
 # COMMAND ----------
 
+import os
+import mlflow
+from mlflow.tracking import MlflowClient
+
+client = MlflowClient()
+local_dir = "/tmp/artifact_downloads"
+if not os.path.exists(local_dir):
+    os.mkdir(local_dir)
+local_path = client.download_artifacts(dbutils.widgets.get("run_id").strip(), dbutils.widgets.get("path").strip(), local_dir)
+print("Artifacts downloaded in: {}".format(local_path))
+print("Artifacts: {}".format(os.listdir(local_path)))
+
+# COMMAND ----------
+
 # Read from the widget
-artifact_URI = dbutils.widgets.get("artifact_URI").strip()
+artifact_URI = local_path + "/" + os.listdir(local_path)[0]
 n_estimators = int(dbutils.widgets.get("n_estimators"))    # Cast to Int
 max_depth = int(dbutils.widgets.get("max_depth"))          # Cast to Int
 max_features = dbutils.widgets.get("max_features").strip()
@@ -46,8 +61,8 @@ with mlflow.start_run() as run:
   mlflow.log_metric("mae", mean_absolute_error(y_test, predictions))  
   mlflow.log_metric("r2", r2_score(y_test, predictions)) 
   
-  artifactURI = mlflow.get_artifact_uri()
-  model_output_path = artifactURI + "/" + model_path
+  #artifactURI = mlflow.get_artifact_uri()
+  model_output_path = "runs:/" + run.info.run_id + "/" + model_path
 
 # COMMAND ----------
 
@@ -56,7 +71,8 @@ import json
 
 dbutils.notebook.exit(json.dumps({
   "status": "OK",
-  "model_output_path": model_output_path.replace("dbfs:", "/dbfs")
+  "model_output_path": model_output_path, #.replace("dbfs:", "/dbfs")
+  "data_path": artifact_URI
 }))
 
 

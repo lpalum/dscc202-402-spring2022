@@ -31,8 +31,10 @@ with mlflow.start_run() as run:
   finally:
     temp.close() # Delete the temp file
     
-  artifactURI = mlflow.get_artifact_uri()
-  predictions_output_path = artifactURI + "/predictions.csv"
+  #artifactURI = mlflow.get_artifact_uri()
+  #predictions_output_path = artifactURI + "/predictions.csv"
+  run_id = run.info.run_id
+  data_dir = temp_name
   
 
 # COMMAND ----------
@@ -42,7 +44,8 @@ import json
 
 dbutils.notebook.exit(json.dumps({
   "status": "OK",
-  "predictions_output_path": predictions_output_path
+  "run_id": run_id,
+  "data_dir": data_dir
 }))
 
 
