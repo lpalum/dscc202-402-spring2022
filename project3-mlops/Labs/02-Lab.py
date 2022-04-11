@@ -163,7 +163,7 @@ with mlflow.start_run(run_name= "RF-Grid-Search2") as run:
     mse = mean_squared_error(y_test, predictions)
     mlflow.log_metrics({"mse": mse})
     
-    experimentID = run.info.experiment_id
+    experimentID2 = run.info.experiment_id
     runID = run.info.run_uuid
     print("Inside MLflow Run with id {}".format(runID))
     
@@ -177,10 +177,10 @@ with mlflow.start_run(run_name= "RF-Grid-Search2") as run:
 # COMMAND ----------
 
 # TODO
-runs = client.search_runs(experimentID, max_results=1)
+runs = client.search_runs(experimentID2, max_results=1)
 # runs[0].data.metrics
 # # runs[0] = client.search_runs(experimentID)
-model = mlflow.sklearn.load_model('runs:/'+runs[0].info.run_id+"/grid-random-forest-model")
+model = mlflow.sklearn.load_model('runs:/'+runs[0].info.run_id+"/grid-random-forest-model2")
 model.feature_importances_
 
 # COMMAND ----------
