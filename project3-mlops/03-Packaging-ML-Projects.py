@@ -99,28 +99,28 @@ from sklearn.model_selection import train_test_split
 @click.option("--max_features", default="auto", type=str)
 def mlflow_rf(data_path, n_estimators, max_depth, max_features):
 
-  with mlflow.start_run() as run:
-    # Import the data
-    df = pd.read_csv(data_path)
-    X_train, X_test, y_train, y_test = train_test_split(df.drop(["price"], axis=1), df[["price"]].values.ravel(), random_state=42)
-    
-    # Create model, train it, and create predictions
-    rf = RandomForestRegressor(n_estimators=n_estimators, max_depth=max_depth, max_features=max_features)
-    rf.fit(X_train, y_train)
-    predictions = rf.predict(X_test)
+    with mlflow.start_run() as run:
+        # Import the data
+        df = pd.read_csv(data_path)
+        X_train, X_test, y_train, y_test = train_test_split(df.drop(["price"], axis=1), df[["price"]].values.ravel(), random_state=42)
 
-    # Log model
-    mlflow.sklearn.log_model(rf, "random-forest-model")
-    
-    # Log params
-    mlflow.log_param("n_estimators", n_estimators)
-    mlflow.log_param("max_depth", max_depth)
-    mlflow.log_param("max_features", max_features)
+        # Create model, train it, and create predictions
+        rf = RandomForestRegressor(n_estimators=n_estimators, max_depth=max_depth, max_features=max_features)
+        rf.fit(X_train, y_train)
+        predictions = rf.predict(X_test)
 
-    # Log metrics
-    mlflow.log_metric("mse", mean_squared_error(y_test, predictions))
-    mlflow.log_metric("mae", mean_absolute_error(y_test, predictions))  
-    mlflow.log_metric("r2", r2_score(y_test, predictions))  
+        # Log model
+        mlflow.sklearn.log_model(rf, "random-forest-model")
+
+        # Log params
+        mlflow.log_param("n_estimators", n_estimators)
+        mlflow.log_param("max_depth", max_depth)
+        mlflow.log_param("max_features", max_features)
+
+        # Log metrics
+        mlflow.log_metric("mse", mean_squared_error(y_test, predictions))
+        mlflow.log_metric("mae", mean_absolute_error(y_test, predictions))  
+        mlflow.log_metric("r2", r2_score(y_test, predictions))  
 
 # if __name__ == "__main__":
 #   mlflow_rf() # Note that this does not need arguments thanks to click
@@ -328,32 +328,32 @@ mlflow.projects.run(working_path,
 
 # COMMAND ----------
 
-# clusterspecs = {
-#     "num_workers": 2,
-#     "spark_version": "5.2.x-scala2.11",
-#     "spark_conf": {},
-#     "aws_attributes": {
-#         "first_on_demand": 1,
-#         "availability": "SPOT_WITH_FALLBACK",
-#         "zone_id": "us-west-1c",
-#         "spot_bid_price_percent": 100,
-#         "ebs_volume_count": 0
-#     },
-#     "node_type_id": "i3.xlarge",
-#     "driver_node_type_id": "i3.xlarge"
-#   }
+clusterspecs = {
+    "num_workers": 2,
+    "spark_version": "5.2.x-scala2.11",
+    "spark_conf": {},
+    "aws_attributes": {
+        "first_on_demand": 1,
+        "availability": "SPOT_WITH_FALLBACK",
+        "zone_id": "us-west-1c",
+        "spot_bid_price_percent": 100,
+        "ebs_volume_count": 0
+    },
+    "node_type_id": "i3.xlarge",
+    "driver_node_type_id": "i3.xlarge"
+  }
 
-# mlflow.projects.run(
-#   uri=working_path,
-#   parameters={
-#     "data_path": "/dbfs/mnt/training/airbnb/sf-listings/airbnb-cleaned-mlflow.csv",
-#     "n_estimators": 1500,
-#     "max_depth": 5,
-#     "max_features": "sqrt"
-# },
-#   backend="databricks",
-#   backend_config=clusterspecs
-# )
+mlflow.projects.run(
+  uri=working_path,
+  parameters={
+    "data_path": "/dbfs/mnt/training/airbnb/sf-listings/airbnb-cleaned-mlflow.csv",
+    "n_estimators": 1500,
+    "max_depth": 5,
+    "max_features": "sqrt"
+},
+  backend="databricks",
+  backend_config=clusterspecs
+)
 
 # COMMAND ----------
 

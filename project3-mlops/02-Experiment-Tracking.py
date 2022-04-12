@@ -158,9 +158,18 @@ with mlflow.start_run(run_name="Basic RF Experiment") as run:
 
 # COMMAND ----------
 
+mlflow.trackingexperimentID
+
+# COMMAND ----------
+
+mlflow.__version__
+
+# COMMAND ----------
+
 from mlflow.tracking import MlflowClient
 
 artifactURL = MlflowClient().get_experiment(experimentID).artifact_location
+print(f"Inside MLflow Run with run_id: {runID}, experiment_id {experimentID}, and artificat url {artifactURL}, MLFlowVersion {mlflow.__version__}")
 dbutils.fs.ls(artifactURL)
 
 # COMMAND ----------
