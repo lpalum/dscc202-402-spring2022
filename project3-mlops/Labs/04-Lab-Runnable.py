@@ -12,10 +12,6 @@ dbutils.widgets.text("max_depth", "1")
 
 # COMMAND ----------
 
-dbutils.widgets.help()
-
-# COMMAND ----------
-
 # TODO
 # Read from the widgets to create 3 variables.  Be sure to cast the values to numeric types
 # n_estimators = FILL_IN
