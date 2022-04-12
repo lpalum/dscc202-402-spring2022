@@ -75,6 +75,7 @@ with mlflow.start_run() as run:
 # Report the model output path to the parent notebook
 #artifactURI = mlflow.get_artifact_uri()
 model_output_path = "runs:/" + run.info.run_id + "/" + model_path
+# updated and ran all
 
 # COMMAND ----------
 
