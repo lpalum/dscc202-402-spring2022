@@ -254,6 +254,8 @@ assert model_output.equals(pd.DataFrame([range(5, 15)]))
 
 model_output
 
+# ran full notebook
+
 # COMMAND ----------
 
 # MAGIC %md

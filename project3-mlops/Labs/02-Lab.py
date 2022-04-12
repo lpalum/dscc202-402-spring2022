@@ -102,6 +102,7 @@ with mlflow.start_run(run_name= "RF-Grid-Search") as run:
     
     experimentID = run.info.experiment_id
     runID = run.info.run_uuid
+    rfURI = run.info.artifact_uri
     print("Inside MLflow Run with id {}".format(runID))
 
 # COMMAND ----------
@@ -132,6 +133,10 @@ client = MlflowClient()
 model = rf_grid_model.best_estimator_
 for p in parameters:
   print("Best '{}': {}".format(p, best_rf.get_params()[p]))
+  
+print(rfURI)
+model = mlflow.sklearn.load_model(rfURI)
+print(model.feature_importances_)
 
 # COMMAND ----------
 
