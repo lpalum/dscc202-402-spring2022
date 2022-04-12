@@ -178,6 +178,8 @@ import pandas as pd
 
 pd.read_csv(local_path+"/"+os.listdir(local_path)[0], index_col=0).head()
 
+# run full notebook
+
 # COMMAND ----------
 
 # MAGIC %md
