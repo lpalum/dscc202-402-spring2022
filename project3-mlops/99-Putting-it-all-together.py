@@ -46,6 +46,7 @@ working_path = workingDir.replace("dbfs:", "/dbfs")
 
 # COMMAND ----------
 
+#start
 import pandas as pd
 
 airbnbDF = spark.read.parquet("/mnt/training/airbnb/sf-listings/sf-listings-correct-types.parquet").toPandas()
