@@ -305,6 +305,8 @@ loaded_postprocess_model = mlflow.pyfunc.load_pyfunc(model_path.replace("dbfs:",
 # Apply the model
 loaded_postprocess_model.predict(X_test)
 
+# all run
+
 # COMMAND ----------
 
 # MAGIC %md-sandbox
