@@ -68,14 +68,14 @@ dbutils.fs.put(path + "MLproject",
 # MAGIC %md
 # MAGIC ## Defining the Environment
 # MAGIC 
-# MAGIC Define the conda environment.  It should include the following libraries:<br><br>
+# MAGIC Define the conda environment to be the same as the 03-Packaging-ML-Projects notebook in the parent directory.  It should include the following libraries:<br><br>
 # MAGIC 
-# MAGIC   - `cloudpickle=0.5.3`
-# MAGIC   - `numpy=1.14.3`
-# MAGIC   - `pandas=0.23.0`
-# MAGIC   - `scikit-learn=0.19.1`
-# MAGIC   - `pip:`
-# MAGIC     - `mlflow==1.0.0`
+# MAGIC   - cloudpickle=1.6.0
+# MAGIC   - numpy=1.19.2
+# MAGIC   - pandas=1.2.4
+# MAGIC   - scikit-learn=0.24.1
+# MAGIC   - pip:
+# MAGIC     - mlflow==1.20.2
 
 # COMMAND ----------
 
