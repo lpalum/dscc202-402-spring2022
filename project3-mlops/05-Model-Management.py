@@ -155,33 +155,20 @@ with mlflow.start_run(run_name="NN Model") as run:
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Look at the model flavors.  Both have their respective `keras` or `sklearn` flavors as well as a `python_function` flavor.
-
-# COMMAND ----------
-
-print(dbutils.fs.head(sklearnURI+"/model/MLmodel"))
-
-# COMMAND ----------
-
-print(dbutils.fs.head(kerasURI+"/model/MLmodel"))
-
-# COMMAND ----------
-
-# MAGIC %md
 # MAGIC Now we can use both of these models in the same way, even though they were trained by different packages.
 
 # COMMAND ----------
 
 import mlflow.pyfunc
 
-rf_pyfunc_model = mlflow.pyfunc.load_pyfunc(model_uri=(sklearnURI+"/model").replace("dbfs:", "/dbfs"))
+rf_pyfunc_model = mlflow.pyfunc.load_model(model_uri="runs:/"+sklearnRunID+"/model")
 type(rf_pyfunc_model)
 
 # COMMAND ----------
 
 import mlflow.pyfunc
 
-nn_pyfunc_model = mlflow.pyfunc.load_pyfunc(model_uri=(kerasURI+"/model").replace("dbfs:", "/dbfs"))
+nn_pyfunc_model = mlflow.pyfunc.mlflow.pyfunc.load_model(model_uri="runs:/"+kerasRunID+"/model")
 type(nn_pyfunc_model)
 
 # COMMAND ----------

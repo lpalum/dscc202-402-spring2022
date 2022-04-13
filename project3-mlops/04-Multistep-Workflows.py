@@ -106,10 +106,10 @@ print(step1)
 # COMMAND ----------
 
 import json
-
-data_output_path = json.loads(step1).get("data_output_path")
-
-print(data_output_path)
+tmp = json.loads(step1)
+run_id = tmp.get("run_id")
+path = tmp.get("path")
+print(run_id, path)
 
 # COMMAND ----------
 
@@ -121,7 +121,8 @@ print(data_output_path)
 # COMMAND ----------
 
 step2 = dbutils.notebook.run("./Multistep/Step-2-Train", 60, 
-  {"artifact_URI": data_output_path,
+  {"run_id": run_id,
+   "path": path,
    "n_estimators": 10,
    "max_depth": 20,
    "max_features": "auto"})
@@ -136,8 +137,8 @@ print(step2)
 # COMMAND ----------
 
 model_output_path = json.loads(step2).get("model_output_path")
-
-print(model_output_path)
+data_path = json.loads(step2).get("data_path")
+print(model_output_path,data_path)
 
 # COMMAND ----------
 
@@ -148,9 +149,23 @@ print(model_output_path)
 
 step3 = dbutils.notebook.run("./Multistep/Step-3-Predict", 60, 
   {"model_path": model_output_path,
-   "data_path": data_output_path})
+   "data_path": data_path})
 
 print(step3)
+
+# COMMAND ----------
+
+import os
+import mlflow
+from mlflow.tracking import MlflowClient
+
+client = MlflowClient()
+local_dir = "/tmp/artifact_downloads"
+if not os.path.exists(local_dir):
+    os.mkdir(local_dir)
+local_path = client.download_artifacts(json.loads(step3).get("run_id"), "predictions.csv", local_dir)
+print("Artifacts downloaded in: {}".format(local_path))
+print("Artifacts: {}".format(os.listdir(local_path)))
 
 # COMMAND ----------
 
@@ -159,9 +174,9 @@ print(step3)
 
 # COMMAND ----------
 
-predictions_output_path = json.loads(step3).get("predictions_output_path")
+import pandas as pd
 
-print(dbutils.fs.head(dbutils.fs.ls(predictions_output_path)[0].path))
+pd.read_csv(local_path+"/"+os.listdir(local_path)[0], index_col=0).head()
 
 # COMMAND ----------
 

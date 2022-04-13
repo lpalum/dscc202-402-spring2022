@@ -190,7 +190,7 @@ time.sleep(10) # In case the registration is still pending
 
 # COMMAND ----------
 
-client.update_model_version(
+client.transition_model_version_stage(
   name=model_details.name,
   version=model_details.version,
   stage='Production',
@@ -317,7 +317,7 @@ time.sleep(10) # In case the registration is still pending
 
 # COMMAND ----------
 
-client.update_model_version(
+client.transition_model_version_stage(
   name=model_name,
   version=new_model_version,
   stage="Staging",
@@ -330,7 +330,7 @@ client.update_model_version(
 
 # COMMAND ----------
 
-client.update_model_version(
+client.transition_model_version_stage(
   name=model_name,
   version=new_model_version,
   stage="Production",
@@ -345,7 +345,7 @@ client.update_model_version(
 
 # COMMAND ----------
 
-client.update_model_version(
+client.transition_model_version_stage(
   name=model_name,
   version=1,
   stage="Archived",
@@ -372,7 +372,7 @@ client.delete_model_version(
 
 # COMMAND ----------
 
-client.update_model_version(
+client.transition_model_version_stage(
   name=model_name,
   version=2,
   stage="Archived",

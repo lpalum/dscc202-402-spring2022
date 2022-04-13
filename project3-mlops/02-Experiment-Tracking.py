@@ -153,15 +153,20 @@ with mlflow.start_run(run_name="Basic RF Experiment") as run:
 
 # COMMAND ----------
 
+artifactURL
+
+# COMMAND ----------
+
 # MAGIC %md
 # MAGIC Now take a look at the directory structure backing this experiment.  This allows you to retrieve artifacts.
 
 # COMMAND ----------
 
-from mlflow.tracking import MlflowClient
+# from mlflow.tracking import MlflowClient
 
-artifactURL = MlflowClient().get_experiment(experimentID).artifact_location
-dbutils.fs.ls(artifactURL)
+# artifactURL = MlflowClient().get_experiment(experimentID).artifact_location
+
+# dbutils.fs.ls(artifactURL)
 
 # COMMAND ----------
 
@@ -170,8 +175,8 @@ dbutils.fs.ls(artifactURL)
 
 # COMMAND ----------
 
-modelURL = f"{artifactURL}/{runID}/artifacts/random-forest-model"
-dbutils.fs.ls(modelURL)
+# modelURL = f"{artifactURL}/{runID}/artifacts/random-forest-model"
+# dbutils.fs.ls(modelURL)
 
 # COMMAND ----------
 
@@ -331,9 +336,9 @@ runs[0].data.metrics
 
 # COMMAND ----------
 
-artifactURI = f"{runs[0].info.artifact_uri}/random-forest-model/"
+# artifactURI = f"{runs[0].info.artifact_uri}/random-forest-model/"
 
-dbutils.fs.ls(artifactURI)
+# dbutils.fs.ls(artifactURI)
 
 # COMMAND ----------
 

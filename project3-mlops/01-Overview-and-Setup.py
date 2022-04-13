@@ -81,6 +81,10 @@
 
 # COMMAND ----------
 
+print("hello")
+
+# COMMAND ----------
+
 # MAGIC %run "./Includes/Classroom-Cleanup"
 
 # COMMAND ----------

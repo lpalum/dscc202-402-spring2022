@@ -66,6 +66,12 @@ display(airbnbDF)
 # COMMAND ----------
 
 # TODO
+airbnbDF_pre=airbnbDF.copy().fillna(method='pad')
+airbnbDF_pre["price"]=airbnbDF_pre["price"].replace('[\$,]', '', regex=True).astype(float)
+
+# COMMAND ----------
+
+airbnbDF_pre.columns
 
 # COMMAND ----------
 
@@ -77,6 +83,7 @@ display(airbnbDF)
 # COMMAND ----------
 
 # TODO
+airbnbDF_pre=airbnbDF_pre.drop(['host_is_superhost', 'cancellation_policy','instant_bookable'],axis=1)
 
 # COMMAND ----------
 
@@ -87,6 +94,37 @@ display(airbnbDF)
 # COMMAND ----------
 
 # TODO
+object_list=airbnbDF_pre.dtypes[airbnbDF_pre.dtypes=='object'].index.tolist()
+for obj in object_list:
+    obj_list = airbnbDF_pre[obj].unique().tolist()
+    obj_list.sort()
+    label_list=range(len(obj_list))
+    obj_dict=dict(zip(obj_list,label_list))
+    airbnbDF_pre[obj]=airbnbDF_pre[obj].apply(lambda x: obj_dict[x])
+
+    
+#Some other pre process
+airbnbDF_pre["trunc_lat"] =round(airbnbDF_pre["latitude"],2)
+airbnbDF_pre["trunc_long"] =round(airbnbDF_pre["longitude"],2)
+airbnbDF_pre["review_scores_sum"] =airbnbDF_pre["review_scores_accuracy"]+airbnbDF_pre["review_scores_cleanliness"]+airbnbDF_pre["review_scores_checkin"]+airbnbDF_pre["review_scores_communication"]+airbnbDF_pre["review_scores_location"]
+# +airbnbDF_pre["review_scores_value"]
+airbnbDF_pre = airbnbDF_pre.drop(["latitude","longitude","review_scores_accuracy","review_scores_cleanliness","review_scores_checkin","review_scores_communication","review_scores_location","review_scores_value"],axis=1)
+
+# COMMAND ----------
+
+import numpy as np
+import seaborn as sns
+
+
+# calculate the correlation matrix
+corr = airbnbDF_pre.corr()
+
+# plot the heatmap
+sns.heatmap(corr, 
+        xticklabels=corr.columns,
+        yticklabels=corr.columns)
+# print(corr)
+print(corr.price)
 
 # COMMAND ----------
 
@@ -98,8 +136,13 @@ display(airbnbDF)
 # COMMAND ----------
 
 # TODO
-from sklearn.model_selection import train_test_split
 
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import MinMaxScaler
+# scaler_x = MinMaxScaler()
+# X=scaler_x.fit_transform(np.array(airbnbDF_pre.drop(["price"], axis=1)))
+
+X_train, X_test, y_train, y_test = train_test_split(np.array(airbnbDF_pre.drop(["price"], axis=1)), np.array(airbnbDF_pre[["price"]]),test_size=0.1)
 
 # COMMAND ----------
 
@@ -119,6 +162,12 @@ from sklearn.model_selection import train_test_split
 # COMMAND ----------
 
 # TODO
+from sklearn.linear_model import Lasso
+from sklearn.linear_model import LinearRegression
+ 
+lasso=Lasso()
+lasso.fit(X_train, y_train)
+ # TODO
 
 # COMMAND ----------
 
@@ -127,7 +176,25 @@ from sklearn.model_selection import train_test_split
 
 # COMMAND ----------
 
-# TODO
+# from sklearn.model_selection import train_test_split
+# from sklearn.preprocessing import MinMaxScaler
+# # scaler_x = MinMaxScaler()
+# # X=scaler_x.fit_transform(np.array(airbnbDF_pre.drop(["price"], axis=1)))
+
+# X_train, X_test, y_train, y_test = train_test_split(np.array(airbnbDF_pre.drop(["price"], axis=1)), np.array(airbnbDF_pre[["price"]]),test_size=0.1)
+# # TODO
+# # TODO
+# from sklearn.linear_model import Lasso
+# from sklearn.linear_model import LinearRegression
+ 
+# lasso=Lasso()
+# lasso.fit(X_train, y_train)
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+y_prediction=lasso.predict(X_test)
+mse = mean_squared_error(y_test, y_prediction)
+mae = mean_absolute_error(y_test,y_prediction)
+r2 = r2_score(y_test, y_prediction)
+mse
 
 # COMMAND ----------
 
@@ -139,7 +206,15 @@ from sklearn.model_selection import train_test_split
 
 # TODO
 import mlflow.sklearn
+with mlflow.start_run(run_name="LASSO Model") as run:
+    mlflow.sklearn.log_model(lasso, "lasso")
+    mlflow.log_metric("mse", mse)
+    mlflow.log_metric("mae", mae)
+    mlflow.log_metric("r2", r2)
+    LASSOrunid = run.info.run_uuid
+    LASSOuri = run.info.artifact_uri
 
+    LASSOexpid = run.info.experiment_id
 
 # COMMAND ----------
 
@@ -157,6 +232,8 @@ import mlflow.sklearn
 
 # TODO
 import mlflow.pyfunc
+lasso_pyfunc_model = mlflow.pyfunc.load_model(model_uri="runs:/"+LASSOrunid+"/lasso")
+type(lasso_pyfunc_model)
 
 # COMMAND ----------
 
@@ -182,6 +259,9 @@ class Airbnb_Model(mlflow.pyfunc.PythonModel):
         self.model = model
     
     def predict(self, context, model_input):
+        price=self.model.predict(model_input)
+        return pd.DataFrame( price/model_input[:,5],columns=['per_price'])
+   
         # FILL_IN
 
 
@@ -192,9 +272,14 @@ class Airbnb_Model(mlflow.pyfunc.PythonModel):
 
 # COMMAND ----------
 
+# MAGIC %sh rm -rf '/dbfs/user/xlu39@ur.rochester.edu/mlflow/99_putting_it_all_together_psp/final-model'
+
+# COMMAND ----------
+
 # TODO
 final_model_path =  f"{working_path}/final-model"
-
+airbnb_model = Airbnb_Model(lasso_pyfunc_model)
+mlflow.pyfunc.save_model(path=final_model_path.replace("dbfs:", "/dbfs"), python_model=airbnb_model )
 # FILL_IN
 
 # COMMAND ----------
@@ -205,6 +290,9 @@ final_model_path =  f"{working_path}/final-model"
 # COMMAND ----------
 
 # TODO
+loaded_model = mlflow.pyfunc.load_model(final_model_path)
+prediction=loaded_model.predict(X_test)
+
 
 # COMMAND ----------
 
@@ -222,12 +310,21 @@ final_model_path =  f"{working_path}/final-model"
 
 # COMMAND ----------
 
+test_df=pd.DataFrame(X_test,columns=airbnbDF_pre.drop(["price"], axis=1).columns)
+train_df=pd.DataFrame(X_train,columns=airbnbDF_pre.drop(["price"], axis=1).columns)
+train_data_path = f"{working_path}/train_data.csv"
+train_df.to_csv(train_data_path,index=False)
+
+# COMMAND ----------
+
 # TODO
-save the testing data 
+# save the testing data 
 test_data_path = f"{working_path}/test_data.csv"
+test_df.to_csv(test_data_path,index=False)
 # FILL_IN
 
 prediction_path = f"{working_path}/predictions.csv"
+prediction.to_csv(prediction_path,index=False)
 
 # COMMAND ----------
 
@@ -249,6 +346,10 @@ import pandas as pd
 @click.option("--prediction_path", default="", type=str)
 def model_predict(final_model_path, test_data_path, prediction_path):
     # FILL_IN
+    loaded_model = mlflow.pyfunc.load_model(final_model_path)
+    test_df=pd.read_csv(test_data_path)
+    prediction=loaded_model.predict(np.array(test_df))
+    prediction.to_csv(prediction_path,index=False)
 
 
 # test model_predict function    
@@ -281,8 +382,10 @@ conda_env: conda.yaml
 entry_points:
   main:
     parameters:
-      #FILL_IN
-    command:  "python predict.py #FILL_IN"
+        final_model_path: {type: str, default: ""}
+        test_data_path: {type: str, default: ""}
+        prediction_path: {type: str, default: ""}
+    command:  "python predict.py --final_model_path {final_model_path} --test_data_path {test_data_path} --prediction_path {prediction_path}"
 '''.strip(), overwrite=True)
 
 # COMMAND ----------
@@ -307,7 +410,6 @@ name: Capstone
 channels:
   - defaults
 dependencies:
-  - python={version.major}.{version.minor}.{version.micro}
   - cloudpickle={cloudpickle.__version__}
   - numpy={numpy.__version__}
   - pandas={pandas.__version__}
@@ -335,11 +437,19 @@ dbutils.fs.put(f"{workingDir}/predict.py",
 import click
 import mlflow.pyfunc
 import pandas as pd
+import numpy as np
 
-# put model_predict function with decorators here
-    
+@click.command()
+@click.option("--final_model_path", default="", type=str)
+@click.option("--test_data_path", default="", type=str)
+@click.option("--prediction_path", default="", type=str)
+def model_predict(final_model_path, test_data_path, prediction_path):
+    loaded_model = mlflow.pyfunc.load_model(final_model_path)
+    test_df=pd.read_csv(test_data_path)
+    prediction=loaded_model.predict(np.array(test_df))
+    prediction.to_csv(prediction_path,index=False)
 if __name__ == "__main__":
-  model_predict()
+    model_predict()
 
 '''.strip(), overwrite=True)
 
@@ -366,9 +476,19 @@ display( dbutils.fs.ls(workingDir) )
 
 # TODO
 second_prediction_path = f"{working_path}/predictions-2.csv"
-mlflow.projects.run(working_path,
-   # FILL_IN
-)
+mlflow.projects.run(uri=working_path,
+  parameters={
+    "final_model_path":final_model_path,
+    "test_data_path":test_data_path,
+    "prediction_path":second_prediction_path
+})
+# mlflow.projects.run(uri=working_path,parameters={
+# "final_model_path":final_model_path,
+# "test_data_path":test_data_path,
+# "prediction_path":second_prediction_path
+# })
+
+
 
 # COMMAND ----------
 
