@@ -83,9 +83,9 @@ parameters = {'n_estimators': [1000] ,
 
 with mlflow.start_run(run_name= "RF-Grid-Search") as run:
     # Create predictions of X_test using best model
-    rf = RandomForestRegressor()
-    rf_grid_model = GridSearchCV(rf, parameters, cv=3)
-#     grid_rf_model = best_rf
+#     rf = RandomForestRegressor()
+#     rf_grid_model = GridSearchCV(rf, parameters, cv=3)
+    rf_grid_model = best_rf
     rf_grid_model.fit(X_train, y_train)
     predictions = rf_grid_model.predict(X_test)
   
@@ -102,7 +102,8 @@ with mlflow.start_run(run_name= "RF-Grid-Search") as run:
     
     experimentID = run.info.experiment_id
     runID = run.info.run_uuid
-    rfURI = run.info.artifact_uri
+#     rfURI = run.info.artifact_uri
+    rfURI = mlflow.get_artifact_uri()
     print("Inside MLflow Run with id {}".format(runID))
 
 # COMMAND ----------
@@ -130,13 +131,10 @@ client = MlflowClient()
 # model = mlflow.sklearn.load_model('runs:/'+runs[0].info.run_id+"/grid-random-forest-model")
 # model.feature_importances_
 
-model = rf_grid_model.best_estimator_
-for p in parameters:
-  print("Best '{}': {}".format(p, best_rf.get_params()[p]))
-  
+# Hyperparameters match!  
 print(rfURI)
-model = mlflow.sklearn.load_model(rfURI)
-print(model.feature_importances_)
+model = mlflow.sklearn.load_model(rfURI+"/grid-random-forest-model")
+print(model)
 
 # COMMAND ----------
 
@@ -153,7 +151,7 @@ with mlflow.start_run(run_name= "RF-Grid-Search2") as run:
     # Create predictions of X_test using best model
     rf = RandomForestRegressor()
     rf_grid_model = GridSearchCV(rf, parameters, cv=3)
-#     grid_rf_model = best_rf
+#     rf_grid_model = best_rf
     rf_grid_model.fit(X_train, y_train)
     predictions = rf_grid_model.predict(X_test)
   
@@ -171,7 +169,7 @@ with mlflow.start_run(run_name= "RF-Grid-Search2") as run:
     experimentID2 = run.info.experiment_id
     runID = run.info.run_uuid
     print("Inside MLflow Run with id {}".format(runID))
-    
+    rfURI2 = mlflow.get_artifact_uri()
     best_rf = rf_grid_model.best_estimator_
 
 # COMMAND ----------
@@ -182,11 +180,15 @@ with mlflow.start_run(run_name= "RF-Grid-Search2") as run:
 # COMMAND ----------
 
 # TODO
-runs = client.search_runs(experimentID2, max_results=1)
+# runs = client.search_runs(experimentID2, max_results=1)
 # runs[0].data.metrics
 # # runs[0] = client.search_runs(experimentID)
-model = mlflow.sklearn.load_model('runs:/'+runs[0].info.run_id+"/grid-random-forest-model2")
-model.feature_importances_
+# model = mlflow.sklearn.load_model('runs:/'+runs[0].info.run_id+"/grid-random-forest-model2")
+# model.feature_importances_
+runs = client.search_runs(experimentID2)
+model = mlflow.sklearn.load_model(rfURI2+"/grid-random-forest-model2")
+print(model)
+print(runs)
 
 # COMMAND ----------
 

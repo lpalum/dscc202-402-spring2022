@@ -66,6 +66,10 @@ display(airbnbDF)
 # COMMAND ----------
 
 # TODO
+# airbnbDF["price"] = airbnbDF["price"].replace("$", "", regex=True)
+airbnbDF["price"] = airbnbDF["price"].replace({'$': ''})
+airbnbDF.head()
+# airbnbDF["price"] = airbnbDF.price.astype(float)
 
 # COMMAND ----------
 
@@ -77,6 +81,12 @@ display(airbnbDF)
 # COMMAND ----------
 
 # TODO
+airbnbDF.columns
+
+
+# COMMAND ----------
+
+airbnbDF = airbnbDF.drop([])
 
 # COMMAND ----------
 
@@ -87,6 +97,7 @@ display(airbnbDF)
 # COMMAND ----------
 
 # TODO
+airbnbDF = airbnbDF.
 
 # COMMAND ----------
 
@@ -99,7 +110,7 @@ display(airbnbDF)
 
 # TODO
 from sklearn.model_selection import train_test_split
-
+X_train, X_test, y_train, y_test = train_test_split(airbnbDF.drop(["price"], axis=1), airbnbDF[["price"]].values.ravel(), random_state=42)
 
 # COMMAND ----------
 
@@ -119,6 +130,18 @@ from sklearn.model_selection import train_test_split
 # COMMAND ----------
 
 # TODO
+from sklearn.ensemble import RandomForestRegressor
+
+def preprocess(model_input):
+    model_input = model_input.fillNA(value=0)
+
+preprocess(X_train)
+preprocess(X_test)
+preprocess(y_train)
+preprocess(y_test)
+
+rf = RandomForestRegressor(n_estimators=100, max_depth=25)
+rf.fit(X_train, y_train)
 
 # COMMAND ----------
 
@@ -128,6 +151,13 @@ from sklearn.model_selection import train_test_split
 # COMMAND ----------
 
 # TODO
+# done below with model
+from sklearn.metrics import mean_squared_error
+
+
+rf_mse = mean_squared_error(y_test, rf.predict(X_test))
+
+rf_mse
 
 # COMMAND ----------
 
@@ -140,6 +170,12 @@ from sklearn.model_selection import train_test_split
 # TODO
 import mlflow.sklearn
 
+with mlflow.start_run(run_name="RF Model") as run: 
+    mlflow.sklearn.log_model(rf, "random-forest-model")
+    mlflow.log_metric("mse", rf_mse)
+
+    experimentID = run.info.experiment_id
+    artifactURI = mlflow.get_artifact_uri()
 
 # COMMAND ----------
 

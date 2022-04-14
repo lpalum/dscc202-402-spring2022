@@ -143,6 +143,10 @@ with mlflow.start_run(run_name="RF Model Pre-process") as run:
 
 # COMMAND ----------
 
+mlflow.__version__
+
+# COMMAND ----------
+
 import mlflow.pyfunc
 from  mlflow.tracking import MlflowClient
 
@@ -196,8 +200,6 @@ class RF_with_preprocess(mlflow.pyfunc.PythonModel):
     def preprocess_input(self, model_input):
         '''return pre-processed model_input'''
         # FILL_IN
-#         model_input["trunc_lat"] = model_input.latitude.round(decimals=2)
-#         model_input["trunc_long"] = X_test_processed.longitude.round(decimals=2)
         model_input["trunc_lat"] = model_input.latitude.round(decimals=2)
         model_input["trunc_long"] = model_input.longitude.round(decimals=2)
         model_input["review_scores_sum"] = model_input[['review_scores_accuracy', 'review_scores_cleanliness', 'review_scores_checkin', 'review_scores_communication', 'review_scores_location', 'review_scores_value']].mean(axis=1)
