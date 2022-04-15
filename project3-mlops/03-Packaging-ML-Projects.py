@@ -354,6 +354,8 @@ mlflow.projects.run(working_path,
 #   backend="databricks",
 #   backend_config=clusterspecs
 # )
+# ran multiple times
+#commented back out as per prof. instructions
 
 # COMMAND ----------
 
@@ -366,6 +368,7 @@ mlflow.run(
   uri="https://github.com/mlflow/mlflow-example",
   parameters={'alpha':0.4}
 )
+# run full notebook - complete
 
 # COMMAND ----------
 

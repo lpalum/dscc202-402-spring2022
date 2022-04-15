@@ -348,6 +348,7 @@ model.feature_importances_
 # COMMAND ----------
 
 # MAGIC %run "./Includes/Classroom-Cleanup"
+# MAGIC # notebook run complete
 
 # COMMAND ----------
 

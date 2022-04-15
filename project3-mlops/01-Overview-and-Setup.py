@@ -82,6 +82,7 @@
 # COMMAND ----------
 
 # MAGIC %run "./Includes/Classroom-Cleanup"
+# MAGIC # notebook commands have been run
 
 # COMMAND ----------
 

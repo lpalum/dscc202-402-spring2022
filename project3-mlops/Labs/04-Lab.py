@@ -44,10 +44,12 @@
 
 # COMMAND ----------
 
-dbutils.notebook.run("./04-Lab-Runnable", 60, 
+nbrun = dbutils.notebook.run("./04-Lab-Runnable", 60, 
   {"n_estimators": "100",
    "learning_rate": ".1",
    "max_depth": "1"})
+print(nbrun)
+# run all
 
 # COMMAND ----------
 
