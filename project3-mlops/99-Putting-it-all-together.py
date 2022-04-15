@@ -66,6 +66,7 @@ display(airbnbDF)
 # COMMAND ----------
 
 # TODO
+airbnbDF['price'] =  airbnbDF['price'].replace('[\$,]', '', regex=True).astype(float)
 
 # COMMAND ----------
 
@@ -77,6 +78,15 @@ display(airbnbDF)
 # COMMAND ----------
 
 # TODO
+airbnbDF.columns
+
+# COMMAND ----------
+
+airbnbDF = airbnbDF.drop(['host_is_superhost', 'cancellation_policy', 'instant_bookable', 'host_total_listings_count', 'review_scores_cleanliness', 'review_scores_checkin', 'review_scores_communication', 'review_scores_value'], axis=1)
+
+# COMMAND ----------
+
+airbnbDF.head()
 
 # COMMAND ----------
 
@@ -87,6 +97,24 @@ display(airbnbDF)
 # COMMAND ----------
 
 # TODO
+from sklearn.preprocessing import LabelEncoder
+
+airbnbDF = airbnbDF.dropna(subset=['zipcode', 'bathrooms', 'beds'])
+
+le = LabelEncoder()
+airbnbDF['zipcode'] = le.fit_transform(airbnbDF['zipcode'])
+
+le = LabelEncoder()
+airbnbDF['neighbourhood_cleansed'] = le.fit_transform(airbnbDF['neighbourhood_cleansed'])
+
+le = LabelEncoder()
+airbnbDF['property_type'] = le.fit_transform(airbnbDF['property_type'])
+
+le = LabelEncoder()
+airbnbDF['room_type'] = le.fit_transform(airbnbDF['room_type'])
+
+le = LabelEncoder()
+airbnbDF['bed_type'] = le.fit_transform(airbnbDF['bed_type'])
 
 # COMMAND ----------
 
@@ -99,7 +127,7 @@ display(airbnbDF)
 
 # TODO
 from sklearn.model_selection import train_test_split
-
+X_train, X_test, y_train, y_test = train_test_split(airbnbDF.drop(["price"], axis=1), airbnbDF[["price"]].values.ravel(), random_state=42)
 
 # COMMAND ----------
 
@@ -118,7 +146,41 @@ from sklearn.model_selection import train_test_split
 
 # COMMAND ----------
 
+# Columns with missing values: zip, bathrooms, beds, review_scores_rating, review_scores_accuracy, review_scores_cleanliness, review_scores_checkin, review_scores_communication, review_scores_location , review_scores_value 
+
+# Remove rows with missing values in zipcode, bathrooms, beds columns
+# airbnbDF = airbnbDF.dropna(subset=['zipcode', 'bathrooms', 'beds'])
+
+# Impute median values for review_scores that are missing
+# airbnbDF['review_scores_rating'] = airbnbDF['review_scores_rating'].fillna(airbnbDF['review_scores_rating'].median())
+# airbnbDF['review_scores_accuracy'] = airbnbDF['review_scores_accuracy'].fillna(airbnbDF['review_scores_accuracy'].median())
+# airbnbDF['review_scores_cleanliness'] = airbnbDF['review_scores_cleanliness'].fillna(airbnbDF['review_scores_cleanliness'].median())
+# airbnbDF['review_scores_checkin'] = airbnbDF['review_scores_checkin'].fillna(airbnbDF['review_scores_checkin'].median())
+# airbnbDF['review_scores_communication'] = airbnbDF['review_scores_communication'].fillna(airbnbDF['review_scores_communication'].median())
+# airbnbDF['review_scores_location'] = airbnbDF['review_scores_location'].fillna(airbnbDF['review_scores_location'].median())
+# airbnbDF['review_scores_value'] = airbnbDF['review_scores_value'].fillna(airbnbDF['review_scores_value'].median())
+
+# COMMAND ----------
+
 # TODO
+# new model 
+from sklearn.ensemble import RandomForestRegressor
+rf = RandomForestRegressor(max_features="log2", min_impurity_decrease=0.2, min_samples_split=5, random_state=42)
+
+# pre-process train data
+X_train_processed = X_train.copy()
+X_train_processed['review_scores_rating'] = X_train_processed['review_scores_rating'].fillna(X_train_processed['review_scores_rating'].median())
+X_train_processed['review_scores_accuracy'] = X_train_processed['review_scores_accuracy'].fillna(X_train_processed['review_scores_accuracy'].median())
+X_train_processed['review_scores_location'] = X_train_processed['review_scores_location'].fillna(X_train_processed['review_scores_location'].median())
+
+#pre-process test data
+X_test_processed = X_test.copy()
+X_test_processed['review_scores_rating'] = X_test_processed['review_scores_rating'].fillna(X_test_processed['review_scores_rating'].median())
+X_test_processed['review_scores_accuracy'] = X_test_processed['review_scores_accuracy'].fillna(X_test_processed['review_scores_accuracy'].median())
+X_test_processed['review_scores_location'] = X_test_processed['review_scores_location'].fillna(X_test_processed['review_scores_location'].median())
+
+# fit and evaluate new rf model
+rf.fit(X_train_processed, y_train)
 
 # COMMAND ----------
 
@@ -128,6 +190,10 @@ from sklearn.model_selection import train_test_split
 # COMMAND ----------
 
 # TODO
+from sklearn.metrics import mean_squared_error
+mse = mean_squared_error(y_test, rf.predict(X_test_processed))
+
+mse
 
 # COMMAND ----------
 
@@ -139,7 +205,10 @@ from sklearn.model_selection import train_test_split
 
 # TODO
 import mlflow.sklearn
-
+with mlflow.start_run(run_name="RF Model 5") as run: 
+    mlflow.sklearn.log_model(rf, "random-forest-model-5")
+    mlflow.log_params({"max_features": "sqrt", "min_impurity_decrease": 0.2, "min_samples_split": 5, "random_state": 42})
+    mlflow.log_metric("mse", mse)
 
 # COMMAND ----------
 
@@ -157,6 +226,7 @@ import mlflow.sklearn
 
 # TODO
 import mlflow.pyfunc
+rf_pyfunc_model = mlflow.pyfunc.load_model('runs:/629ec5b3d3d34a43bdb3e98f4ad05091/random-forest-model-5')
 
 # COMMAND ----------
 
@@ -181,8 +251,21 @@ class Airbnb_Model(mlflow.pyfunc.PythonModel):
     def __init__(self, model):
         self.model = model
     
+    def preprocess_input(self, model_input):
+        model_input['review_scores_rating'] = model_input['review_scores_rating'].fillna(model_input['review_scores_rating'].median())
+        model_input['review_scores_accuracy'] = model_input['review_scores_accuracy'].fillna(model_input['review_scores_accuracy'].median())
+        model_input['review_scores_location'] = model_input['review_scores_location'].fillna(model_input['review_scores_location'].median())
+        return model_input
+        
     def predict(self, context, model_input):
         # FILL_IN
+        model_input = model_input.reset_index(drop=True)
+        processed_model_input = self.preprocess_input(model_input.copy())
+        results = self.model.predict(processed_model_input)
+        results_per_person = []
+        for i in (range(0,len(results))):
+            results_per_person.append(results[i]/model_input['accommodates'][i])
+        return results_per_person
 
 
 # COMMAND ----------
@@ -196,6 +279,8 @@ class Airbnb_Model(mlflow.pyfunc.PythonModel):
 final_model_path =  f"{working_path}/final-model"
 
 # FILL_IN
+airbnb_model = Airbnb_Model(rf_pyfunc_model)
+mlflow.pyfunc.save_model(path=final_model_path, python_model=airbnb_model)
 
 # COMMAND ----------
 
@@ -205,6 +290,8 @@ final_model_path =  f"{working_path}/final-model"
 # COMMAND ----------
 
 # TODO
+loaded_airbnb_model = mlflow.pyfunc.load_model(final_model_path)
+loaded_airbnb_model.predict(X_test)
 
 # COMMAND ----------
 
@@ -223,10 +310,10 @@ final_model_path =  f"{working_path}/final-model"
 # COMMAND ----------
 
 # TODO
-save the testing data 
+# save the testing data 
 test_data_path = f"{working_path}/test_data.csv"
 # FILL_IN
-
+X_test.to_csv(test_data_path, index=False)
 prediction_path = f"{working_path}/predictions.csv"
 
 # COMMAND ----------
@@ -249,7 +336,8 @@ import pandas as pd
 @click.option("--prediction_path", default="", type=str)
 def model_predict(final_model_path, test_data_path, prediction_path):
     # FILL_IN
-
+    loaded_model = mlflow.pyfunc.load_model(final_model_path)
+    pd.Series(loaded_model.predict(pd.read_csv(test_data_path))).to_csv(prediction_path, index=False)
 
 # test model_predict function    
 demo_prediction_path = f"{working_path}/predictions.csv"
@@ -281,8 +369,10 @@ conda_env: conda.yaml
 entry_points:
   main:
     parameters:
-      #FILL_IN
-    command:  "python predict.py #FILL_IN"
+      final_model_path: {type: str, default: "/dbfs/user/slogan6@ur.rochester.edu/mlflow/99_putting_it_all_together_psp/final-model"}
+      test_data_path: {type: str, default: "/dbfs/user/slogan6@ur.rochester.edu/mlflow/99_putting_it_all_together_psp/test_data.csv"}
+      prediction_path: {type: str}
+    command:  "python predict.py --final_model_path {final_model_path} --test_data_path {test_data_path} --prediction_path {prediction_path}"
 '''.strip(), overwrite=True)
 
 # COMMAND ----------
@@ -337,6 +427,14 @@ import mlflow.pyfunc
 import pandas as pd
 
 # put model_predict function with decorators here
+@click.command()
+@click.option("--final_model_path", default="/dbfs/user/slogan6@ur.rochester.edu/mlflow/99_putting_it_all_together_psp/final-model", type=str)
+@click.option("--test_data_path", default="/dbfs/user/slogan6@ur.rochester.edu/mlflow/99_putting_it_all_together_psp/test_data.csv", type=str)
+@click.option("--prediction_path", type=str)
+def model_predict(final_model_path, test_data_path, prediction_path):
+    # FILL_IN
+    loaded_model = mlflow.pyfunc.load_model(final_model_path)
+    pd.Series(loaded_model.predict(pd.read_csv(test_data_path))).to_csv(prediction_path, index=False)
     
 if __name__ == "__main__":
   model_predict()
@@ -367,8 +465,12 @@ display( dbutils.fs.ls(workingDir) )
 # TODO
 second_prediction_path = f"{working_path}/predictions-2.csv"
 mlflow.projects.run(working_path,
-   # FILL_IN
-)
+    # FILL_IN
+    parameters={
+    "final_model_path": "/dbfs/user/slogan6@ur.rochester.edu/mlflow/99_putting_it_all_together_psp/final-model",
+    "test_data_path": "/dbfs/user/slogan6@ur.rochester.edu/mlflow/99_putting_it_all_together_psp/test_data.csv",
+    "prediction_path": second_prediction_path
+    })
 
 # COMMAND ----------
 
