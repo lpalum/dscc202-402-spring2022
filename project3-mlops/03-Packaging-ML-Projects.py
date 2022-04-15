@@ -328,32 +328,32 @@ mlflow.projects.run(working_path,
 
 # COMMAND ----------
 
-# clusterspecs = {
-#     "num_workers": 2,
-#     "spark_version": "5.2.x-scala2.11",
-#     "spark_conf": {},
-#     "aws_attributes": {
-#         "first_on_demand": 1,
-#         "availability": "SPOT_WITH_FALLBACK",
-#         "zone_id": "us-west-1c",
-#         "spot_bid_price_percent": 100,
-#         "ebs_volume_count": 0
-#     },
-#     "node_type_id": "i3.xlarge",
-#     "driver_node_type_id": "i3.xlarge"
-#   }
+clusterspecs = {
+    "num_workers": 2,
+    "spark_version": "5.2.x-scala2.11",
+    "spark_conf": {},
+    "aws_attributes": {
+        "first_on_demand": 1,
+        "availability": "SPOT_WITH_FALLBACK",
+        "zone_id": "us-west-1c",
+        "spot_bid_price_percent": 100,
+        "ebs_volume_count": 0
+    },
+    "node_type_id": "i3.xlarge",
+    "driver_node_type_id": "i3.xlarge"
+  }
 
-# mlflow.projects.run(
-#   uri=working_path,
-#   parameters={
-#     "data_path": "/dbfs/mnt/training/airbnb/sf-listings/airbnb-cleaned-mlflow.csv",
-#     "n_estimators": 1500,
-#     "max_depth": 5,
-#     "max_features": "sqrt"
-# },
-#   backend="databricks",
-#   backend_config=clusterspecs
-# )
+mlflow.projects.run(
+  uri=working_path,
+  parameters={
+    "data_path": "/dbfs/mnt/training/airbnb/sf-listings/airbnb-cleaned-mlflow.csv",
+    "n_estimators": 1500,
+    "max_depth": 5,
+    "max_features": "sqrt"
+},
+  backend="databricks",
+  backend_config=clusterspecs
+)
 
 # COMMAND ----------
 
