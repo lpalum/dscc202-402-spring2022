@@ -5,7 +5,7 @@
 #   - learning_rate with a default of .1
 #   - max_depth with a default of 1 
 # Note that only strings can be used for widgets
-# dbutils.widgets.text("data_input_path", "/dbfs/mnt/training/airbnb/sf-listings/airbnb-cleaned-mlflow.csv")
+dbutils.widgets.text("data_input_path", "/dbfs/mnt/training/airbnb/sf-listings/airbnb-cleaned-mlflow.csv")
 dbutils.widgets.text("n_estimators", "100")
 dbutils.widgets.text("learning_rate", ".1")
 dbutils.widgets.text("max_depth", "1")
@@ -17,7 +17,7 @@ dbutils.widgets.text("max_depth", "1")
 # n_estimators = FILL_IN
 # learning_rate = FILL_IN
 # max_depth = FILL_IN
-# data_input_path = dbutils.widgets.get("data_input_path").strip()
+data_input_path = dbutils.widgets.get("data_input_path").strip()
 n_estimators = int(dbutils.widgets.get("n_estimators"))
 learning_rate = float(dbutils.widgets.get("learning_rate"))
 max_depth = int(dbutils.widgets.get("max_depth"))
@@ -37,10 +37,10 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
 with mlflow.start_run() as run:
     # Import the data
-#     df = pd.read_csv(data_input_path)
-    X, y = make_regression(random_state=0)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)
-#     X_train, X_test, y_train, y_test = train_test_split(df.drop(["price"], axis=1), df[["price"]].values.ravel(), random_state=42)
+    df = pd.read_csv(data_input_path)
+#     X, y = make_regression(random_state=0)
+#     X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)
+    X_train, X_test, y_train, y_test = train_test_split(df.drop(["price"], axis=1), df[["price"]].values.ravel(), random_state=42)
 
     # Create model, train it, and create predictions
     rf = GradientBoostingRegressor(n_estimators=n_estimators, learning_rate=learning_rate, max_depth=max_depth)

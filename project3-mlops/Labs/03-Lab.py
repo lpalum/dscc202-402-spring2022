@@ -101,7 +101,7 @@ dependencies:
   - pandas={pandas.__version__}
   - scikit-learn={sklearn.__version__}
   - pip:
-    - mlflow=={mlflow.__version__}
+      - mlflow=={mlflow.__version__}
 '''.strip())
 
 #   - cloudpickle={0.5.3}
@@ -176,14 +176,20 @@ dbutils.fs.ls(path)
 
 # COMMAND ----------
 
+display( dbutils.fs.ls(path))
+
+# COMMAND ----------
+
 # MAGIC %md
 # MAGIC Execute your solution with the following code.
 
 # COMMAND ----------
 
 import mlflow
-
-mlflow.projects.run(uri=path.replace("dbfs:","/dbfs"),
+working_path = path.replace("dbfs:","/dbfs")
+print(working_path)
+# mlflow.projects.run(uri=path.replace("dbfs:","/dbfs"),
+mlflow.projects.run(uri=working_path,
   parameters={
     "data_path": "/dbfs/mnt/training/airbnb/sf-listings/airbnb-cleaned-mlflow.csv",
     "bootstrap": False,
@@ -191,6 +197,8 @@ mlflow.projects.run(uri=path.replace("dbfs:","/dbfs"),
 })
 
 # lab 03 filled in and run
+# no permissions - exception
+# ShellCommandException: Non-zero exit code: 1
 
 # COMMAND ----------
 

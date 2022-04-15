@@ -43,6 +43,10 @@ X_train, X_test, y_train, y_test = train_test_split(df.drop(["price"], axis=1), 
 
 # COMMAND ----------
 
+df.head()
+
+# COMMAND ----------
+
 # MAGIC %md
 # MAGIC Train a random forest model.
 
@@ -173,7 +177,7 @@ except ValueError as e:
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Why did this fail?
+# MAGIC Why did this fail? - Too many features, need to do preprocessing.
 
 # COMMAND ----------
 

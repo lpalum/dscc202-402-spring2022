@@ -66,10 +66,15 @@ display(airbnbDF)
 # COMMAND ----------
 
 # TODO
-# airbnbDF["price"] = airbnbDF["price"].replace("$", "", regex=True)
-airbnbDF["price"] = airbnbDF["price"].replace({'$': ''})
-airbnbDF.head()
-# airbnbDF["price"] = airbnbDF.price.astype(float)
+import numpy as np
+airbnbDF["price"] = airbnbDF["price"].str.replace("$", "", regex=True)
+airbnbDF["price"] = airbnbDF["price"].str.replace(",", "", regex=True)
+airbnbDF["price"] = airbnbDF.price.astype('float32')
+print(airbnbDF["price"])
+
+# airbnbDF["price"] = airbnbDF["price"].str.replace('$', '')
+
+
 
 # COMMAND ----------
 
@@ -81,12 +86,16 @@ airbnbDF.head()
 # COMMAND ----------
 
 # TODO
-airbnbDF.columns
+
+airbnbDF["trunc_lat"] = airbnbDF.latitude.round(decimals=2)
+airbnbDF["trunc_long"] = airbnbDF.longitude.round(decimals=2)
+airbnbDF["review_scores_sum"] = airbnbDF[['review_scores_accuracy', 'review_scores_cleanliness', 'review_scores_checkin', 'review_scores_communication', 'review_scores_location', 'review_scores_value']].mean(axis=1)
+airbnbDF = airbnbDF.drop(["latitude", "longitude", 'review_scores_accuracy', 'review_scores_cleanliness', 'review_scores_checkin', 'review_scores_communication', 'review_scores_location', 'review_scores_value', "neighbourhood_cleansed", "property_type", "zipcode"], axis=1)
 
 
 # COMMAND ----------
 
-airbnbDF = airbnbDF.drop([])
+airbnbDF.columns
 
 # COMMAND ----------
 
@@ -97,7 +106,43 @@ airbnbDF = airbnbDF.drop([])
 # COMMAND ----------
 
 # TODO
-airbnbDF = airbnbDF.
+from sklearn.impute import SimpleImputer
+
+airbnbDF["host_is_superhost"] = airbnbDF["host_is_superhost"].str.replace("t", "0", regex=True)
+airbnbDF["host_is_superhost"] = airbnbDF["host_is_superhost"].str.replace("f", "1", regex=True)
+airbnbDF["instant_bookable"] = airbnbDF["instant_bookable"].str.replace("t", "0", regex=True)
+airbnbDF["instant_bookable"] = airbnbDF["instant_bookable"].str.replace("f", "1", regex=True)
+# airbnbDF["host_is_superhost"] = airbnbDF.host_is_superhost.astype(int)
+# airbnbDF["instant_bookable"] = airbnbDF["instant_bookable"].astype(int)
+airbnbDF["host_is_superhost"] = pd.to_numeric(airbnbDF["host_is_superhost"])
+airbnbDF["instant_bookable"] = pd.to_numeric(airbnbDF["instant_bookable"])
+airbnbDF["bed_type"] = np.where(airbnbDF["bed_type"] == "Real Bed", 0, 1)
+airbnbDF["room_type"] = np.where(airbnbDF["room_type"] == "Entire home/apt", 0, 1)
+airbnbDF["cancellation_policy"] = airbnbDF["cancellation_policy"].str.replace("flexible", "0", regex=True)
+airbnbDF["cancellation_policy"] = airbnbDF["cancellation_policy"].str.replace("moderate", "1", regex=True)
+airbnbDF["cancellation_policy"] = airbnbDF["cancellation_policy"].str.replace("super_strict_30", "3", regex=True)
+airbnbDF["cancellation_policy"] = airbnbDF["cancellation_policy"].str.replace("super_strict_60", "3", regex=True)
+airbnbDF["cancellation_policy"] = airbnbDF["cancellation_policy"].str.replace("strict", "2", regex=True)
+# airbnbDF["cancellation_policy"] = airbnbDF["cancellation_policy"].astype(int)
+airbnbDF["cancellation_policy"] = pd.to_numeric(airbnbDF["cancellation_policy"])
+# airbnbDF["zipcode"] = airbnbDF["zipcode"].replace("-- default zip code --", np.nan, regex=True)
+airbnbDF = airbnbDF.apply(pd.to_numeric)
+impute = SimpleImputer(missing_values=np.nan, strategy='mean')
+# airbnbDF = impute.fit(airbnbDF)
+airbnbDF = impute.fit_transform(airbnbDF)
+airbnbDF = pd.DataFrame(airbnbDF, columns=['host_is_superhost', 'cancellation_policy', 'instant_bookable',
+       'host_total_listings_count', 'room_type', 'accommodates', 'bathrooms',
+       'bedrooms', 'beds', 'bed_type', 'minimum_nights', 'number_of_reviews',
+       'review_scores_rating', 'price', 'trunc_lat', 'trunc_long',
+       'review_scores_sum'])
+print(airbnbDF.head())
+# airbnbDF.fillna(-1)
+
+# COMMAND ----------
+
+print(type(airbnbDF["price"][1]))
+print(max(airbnbDF["price"]))
+print(min(airbnbDF["price"]))
 
 # COMMAND ----------
 
@@ -132,16 +177,52 @@ X_train, X_test, y_train, y_test = train_test_split(airbnbDF.drop(["price"], axi
 # TODO
 from sklearn.ensemble import RandomForestRegressor
 
-def preprocess(model_input):
-    model_input = model_input.fillNA(value=0)
+rfmodel = RandomForestRegressor(n_estimators=100, max_depth=25)
+rfmodel.fit(X_train, y_train)
 
-preprocess(X_train)
-preprocess(X_test)
-preprocess(y_train)
-preprocess(y_test)
+# class RF_with_preprocess(mlflow.pyfunc.PythonModel):
 
-rf = RandomForestRegressor(n_estimators=100, max_depth=25)
-rf.fit(X_train, y_train)
+#     def __init__(self, trained_rf):
+#         self.rf = trained_rf
+
+#     def preprocess_X(model_input):
+#         model_input = model_input.fillNA(value=-1)
+#         model_input["trunc_lat"] = model_input.latitude.round(decimals=2)
+#         model_input["trunc_long"] = model_input.longitude.round(decimals=2)
+#         model_input["review_scores_sum"] = model_input[['review_scores_accuracy', 'review_scores_cleanliness', 'review_scores_checkin', 'review_scores_communication', 'review_scores_location', 'review_scores_value']].mean(axis=1)
+#         model_input = model_input.drop(["latitude", "longitude", 'review_scores_accuracy', 'review_scores_cleanliness', 'review_scores_checkin', 'review_scores_communication', 'review_scores_location', 'review_scores_value', "neighbourhood_cleansed", "property_type"], axis=1)
+#         model_input["host_is_superhost"] = model_input["host_is_superhost"].str.replace("t", "0", regex=True)
+#         model_input["host_is_superhost"] = model_input["host_is_superhost"].str.replace("f", "1", regex=True)
+#         model_input["instant_bookable"] = model_input["instant_bookable"].str.replace("t", "0", regex=True)
+#         model_input["instant_bookable"] = model_input["instant_bookable"].str.replace("f", "1", regex=True)
+#         model_input["host_is_superhost"] = pd.to_numeric(model_input["host_is_superhost"])
+#         model_input["instant_bookable"] = pd.to_numeric(model_input["instant_bookable"])
+#         model_input["bed_type"] = np.where(model_input["bed_type"] == "Real Bed", 0, 1)
+#         model_input["room_type"] = np.where(model_input["room_type"] == "Entire home/apt", 0, 1)
+#         model_input["cancellation_policy"] = model_input["cancellation_policy"].str.replace("flexible", "0", regex=True)
+#         model_input["cancellation_policy"] = model_input["cancellation_policy"].str.replace("moderate", "1", regex=True)
+#         model_input["cancellation_policy"] = model_input["cancellation_policy"].str.replace("super_strict_30", "3", regex=True)
+#         model_input["cancellation_policy"] = model_input["cancellation_policy"].str.replace("super_strict_60", "3", regex=True)
+#         model_input["cancellation_policy"] = model_input["cancellation_policy"].str.replace("strict", "2", regex=True)
+#         model_input["cancellation_policy"] = pd.to_numeric(model_input["cancellation_policy"])
+#         airbnbDF["zipcode"] = airbnbDF["zipcode"].str.replace("-- default zip code --", "0", regex=True)
+#         airbnbDF = airbnbDF.apply(pd.to_numeric)
+#         return
+
+#     def preprocess_y(model_input):
+#         model_input["price"] = model_input["price"].str.replace("$", "", regex=True)
+#         model_input["price"] = model_input["price"].str.replace(",", "", regex=True)
+#         model_input["price"] = model_input.price.astype(float)
+#         return
+
+    
+
+# preprocess_X(X_train)
+# preprocess_X(X_test)
+# preprocess_y(y_train)
+# preprocess_y(y_test)
+
+
 
 # COMMAND ----------
 
@@ -155,7 +236,7 @@ rf.fit(X_train, y_train)
 from sklearn.metrics import mean_squared_error
 
 
-rf_mse = mean_squared_error(y_test, rf.predict(X_test))
+rf_mse = mean_squared_error(y_test, rfmodel.predict(X_test))
 
 rf_mse
 
@@ -169,10 +250,25 @@ rf_mse
 
 # TODO
 import mlflow.sklearn
+params = {
+  "n_estimators": 100,
+  "max_depth": 30,
+  "random_state": 42}
 
-with mlflow.start_run(run_name="RF Model") as run: 
+# parameters = {'n_estimators': [10, 100, 1000] , 
+#               'max_depth': [5, 10, 25, 50] }
+
+with mlflow.start_run(run_name="RF Model") as run:
+    rf = RandomForestRegressor()
+    rf.fit(X_train, y_train)
+#     grid_rf_model = GridSearchCV(rf, parameters, cv=3)
+#     grid_rf_model.fit(X_train, y_train)
+#     best_rf = grid_rf_model.best_estimator_
+    
     mlflow.sklearn.log_model(rf, "random-forest-model")
+    rf_mse = mean_squared_error(y_test, rfmodel.predict(X_test))
     mlflow.log_metric("mse", rf_mse)
+    mlflow.log_params(params)
 
     experimentID = run.info.experiment_id
     artifactURI = mlflow.get_artifact_uri()
@@ -193,6 +289,18 @@ with mlflow.start_run(run_name="RF Model") as run:
 
 # TODO
 import mlflow.pyfunc
+from  mlflow.tracking import MlflowClient
+
+client = MlflowClient()
+
+runs = client.search_runs(experimentID, order_by=["metrics.mse asc"], max_results=1)
+# for i in range(len(runs.data.metrics)):
+    
+# print(runs[0].data.metrics)
+artifactURI = 'runs:/'+runs[0].info.run_id+"/random-forest-model"
+
+model = mlflow.sklearn.load_model(artifactURI)
+model.feature_importances_
 
 # COMMAND ----------
 
@@ -218,7 +326,12 @@ class Airbnb_Model(mlflow.pyfunc.PythonModel):
         self.model = model
     
     def predict(self, context, model_input):
-        # FILL_IN
+        prediction = self.model.predict(model_input.copy())
+        perperson = [0]*len(prediction)
+        acc = (model_input['accommodates'].iloc[:].copy()).tolist()
+        for i in range(len(prediction)):
+            perperson[i] = prediction[i]/(acc[i])
+        return perperson
 
 
 # COMMAND ----------
@@ -232,6 +345,10 @@ class Airbnb_Model(mlflow.pyfunc.PythonModel):
 final_model_path =  f"{working_path}/final-model"
 
 # FILL_IN
+dbutils.fs.rm(final_model_path, True) # remove folder if already exists
+
+rf_model = Airbnb_Model(rf)
+mlflow.pyfunc.save_model(path=final_model_path.replace("dbfs:", "/dbfs"), python_model=rf_model)
 
 # COMMAND ----------
 
@@ -240,7 +357,14 @@ final_model_path =  f"{working_path}/final-model"
 
 # COMMAND ----------
 
+# print(X_test.accommodates)
+# print(X_test.head())
+
+# COMMAND ----------
+
 # TODO
+loaded_model = mlflow.pyfunc.load_pyfunc(final_model_path.replace("dbfs:", "/dbfs"))
+loaded_model.predict(X_test)
 
 # COMMAND ----------
 
@@ -259,9 +383,16 @@ final_model_path =  f"{working_path}/final-model"
 # COMMAND ----------
 
 # TODO
-save the testing data 
+# save the testing data 
+from pathlib import Path
+
 test_data_path = f"{working_path}/test_data.csv"
-# FILL_IN
+
+def df2csv(a_dataframe, data_path):
+    filepath = Path(data_path)  
+    filepath.parent.mkdir(parents=True, exist_ok=True)  
+    a_dataframe.to_csv(data_path, index=False) 
+df2csv(X_test, test_data_path)
 
 prediction_path = f"{working_path}/predictions.csv"
 
@@ -279,16 +410,31 @@ import click
 import mlflow.pyfunc
 import pandas as pd
 
+
 @click.command()
 @click.option("--final_model_path", default="", type=str)
 @click.option("--test_data_path", default="", type=str)
 @click.option("--prediction_path", default="", type=str)
 def model_predict(final_model_path, test_data_path, prediction_path):
     # FILL_IN
+    with mlflow.start_run() as run:
+    # Import the data
+        df = pd.read_csv(test_data_path)
+        # load model, train it, and create predictions
+        loaded_model = mlflow.pyfunc.load_pyfunc(final_model_path.replace("dbfs:", "/dbfs"))
+        predictions = loaded_model.predict(df)
+        predictions = np.asarray(predictions)
+        pd.DataFrame(predictions).to_csv(prediction_path, header=None, index=False)
+#         np.savetxt(prediction_path, predictions, delimiter=",")
+
+        # Log model
+        mlflow.sklearn.log_model(loaded_model, "random-forest-model")
+
 
 
 # test model_predict function    
 demo_prediction_path = f"{working_path}/predictions.csv"
+
 
 from click.testing import CliRunner
 runner = CliRunner()
@@ -296,9 +442,10 @@ result = runner.invoke(model_predict, ['--final_model_path', final_model_path,
                                        '--test_data_path', test_data_path,
                                        '--prediction_path', demo_prediction_path], catch_exceptions=True)
 
+print(result.exception)
 assert result.exit_code == 0, "Code failed" # Check to see that it worked
 print("Price per person predictions: ")
-print(pd.read_csv(demo_prediction_path))
+print(pd.read_csv(demo_prediction_path, header=None))
 
 # COMMAND ----------
 
@@ -317,8 +464,11 @@ conda_env: conda.yaml
 entry_points:
   main:
     parameters:
-      #FILL_IN
-    command:  "python predict.py #FILL_IN"
+      final_model_path: {type: str, default:""}
+      test_data_path: {type: str, default:""}
+      prediction_path: {type: str, default:""}
+    command:  "python predict.py --final_model_path {final_model_path} --test_data_path {test_data_path} --prediction_path {prediction_path}"
+    
 '''.strip(), overwrite=True)
 
 # COMMAND ----------
@@ -371,8 +521,31 @@ dbutils.fs.put(f"{workingDir}/predict.py",
 import click
 import mlflow.pyfunc
 import pandas as pd
+import numpy as np
 
-# put model_predict function with decorators here
+
+@click.command()
+@click.option("--final_model_path", default="", type=str)
+@click.option("--test_data_path", default="", type=str)
+@click.option("--prediction_path", default="", type=str)
+def model_predict(final_model_path, test_data_path, prediction_path):
+    # FILL_IN
+    with mlflow.start_run() as run:
+    # Import the data
+        df = pd.read_csv(test_data_path)
+        # load model, and create predictions
+        loaded_model = mlflow.pyfunc.load_pyfunc(final_model_path.replace("dbfs:", "/dbfs"))
+        predictions = loaded_model.predict(df)
+        predictions = np.asarray(predictions)
+        pd.DataFrame(predictions).to_csv(prediction_path, header=None, index=False)
+#         np.savetxt(prediction_path, predictions, delimiter=",")
+
+        # Log model
+        mlflow.sklearn.log_model(loaded_model, "random-forest-model")
+
+
+
+
     
 if __name__ == "__main__":
   model_predict()
@@ -403,7 +576,10 @@ display( dbutils.fs.ls(workingDir) )
 # TODO
 second_prediction_path = f"{working_path}/predictions-2.csv"
 mlflow.projects.run(working_path,
-   # FILL_IN
+  parameters={
+    "final_model_path": final_model_path,
+    "test_data_path": test_data_path,
+    "prediction_path": second_prediction_path}
 )
 
 # COMMAND ----------
@@ -414,7 +590,7 @@ mlflow.projects.run(working_path,
 # COMMAND ----------
 
 print("Price per person predictions: ")
-print(pd.read_csv(second_prediction_path))
+print(pd.read_csv(second_prediction_path, header=None))
 
 # COMMAND ----------
 
