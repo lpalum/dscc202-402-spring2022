@@ -36,6 +36,11 @@ working_path = workingDir.replace("dbfs:", "/dbfs")
 
 # COMMAND ----------
 
+print(working_path)
+print(workingDir)
+
+# COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## Pre-processing
 # MAGIC 
@@ -66,6 +71,7 @@ display(airbnbDF)
 # COMMAND ----------
 
 # TODO
+airbnbDF["price"] = pd.to_numeric(airbnbDF["price"].str.replace("[$,]","",regex=True))
 
 # COMMAND ----------
 
@@ -76,7 +82,21 @@ display(airbnbDF)
 
 # COMMAND ----------
 
+print(airbnbDF["host_is_superhost"].value_counts())
+print(airbnbDF["cancellation_policy"].value_counts())
+print(airbnbDF["instant_bookable"].value_counts())
+print(airbnbDF["neighbourhood_cleansed"].value_counts())
+print(airbnbDF["bed_type"].value_counts())
+print(airbnbDF["zipcode"].value_counts())
+print(airbnbDF["property_type"].value_counts())
+print(airbnbDF["room_type"].value_counts())
+#no_reviews = airbnbDF[airbnbDF["number_of_reviews"]==0]
+#no_reviews.isna().sum()
+
+# COMMAND ----------
+
 # TODO
+relevant_dataset = airbnbDF.drop(["zipcode","neighbourhood_cleansed","bed_type"],axis=1)
 
 # COMMAND ----------
 
@@ -87,6 +107,73 @@ display(airbnbDF)
 # COMMAND ----------
 
 # TODO
+print(relevant_dataset.isna().sum())
+relevant_dataset["review_scores_rating"] = relevant_dataset["review_scores_rating"].fillna(0)
+relevant_dataset["review_scores_accuracy"] = relevant_dataset["review_scores_accuracy"].fillna(0)
+relevant_dataset["review_scores_cleanliness"] = relevant_dataset["review_scores_cleanliness"].fillna(0)
+relevant_dataset["review_scores_checkin"] = relevant_dataset["review_scores_checkin"].fillna(0)
+relevant_dataset["review_scores_communication"] = relevant_dataset["review_scores_communication"].fillna(0)
+relevant_dataset["review_scores_location"] = relevant_dataset["review_scores_location"].fillna(0)
+relevant_dataset["review_scores_value"] = relevant_dataset["review_scores_value"].fillna(0)
+
+# COMMAND ----------
+
+#print(relevant_dataset.isna().sum())
+relevant_dataset = relevant_dataset.dropna(subset = ["host_is_superhost"])
+#
+relevant_dataset = relevant_dataset.dropna(subset = ["bathrooms"])
+
+relevant_dataset = relevant_dataset.dropna(subset = ["beds"])
+print(relevant_dataset.isna().sum())
+
+# COMMAND ----------
+
+from sklearn import preprocessing
+
+le = preprocessing.LabelEncoder()
+
+sh_encoder = le.fit(relevant_dataset["host_is_superhost"].values)
+sh_tranformed = sh_encoder.transform(relevant_dataset["host_is_superhost"].values)
+print(sh_encoder.classes_)
+print(sh_tranformed)
+relevant_dataset["host_is_superhost"] = sh_tranformed
+
+# COMMAND ----------
+
+can_encoder = le.fit(relevant_dataset["cancellation_policy"].values)
+can_encoder.classes_
+
+# COMMAND ----------
+
+
+
+can_encoder = le.fit(relevant_dataset["cancellation_policy"].values)
+can_tranformed = can_encoder.transform(relevant_dataset["cancellation_policy"].values)
+print(can_encoder.classes_)
+print(can_tranformed)
+relevant_dataset["cancellation_policy"] = can_tranformed
+
+book_encoder = le.fit(relevant_dataset["instant_bookable"].values)
+book_tranformed = book_encoder.transform(relevant_dataset["instant_bookable"].values)
+print(book_encoder.classes_)
+print(book_tranformed)
+relevant_dataset["instant_bookable"] = book_tranformed
+
+prop_type_encoder = le.fit(relevant_dataset["property_type"].values)
+prop_type_tranformed = prop_type_encoder.transform(relevant_dataset["property_type"].values)
+print(prop_type_encoder.classes_)
+print(prop_type_tranformed)
+relevant_dataset["property_type"] = prop_type_tranformed
+
+rt_encoder = le.fit(relevant_dataset["room_type"].values)
+rt_tranformed = rt_encoder.transform(relevant_dataset["room_type"].values)
+print(rt_encoder.classes_)
+print(rt_tranformed)
+relevant_dataset["room_type"] = rt_tranformed
+
+# COMMAND ----------
+
+relevant_dataset
 
 # COMMAND ----------
 
@@ -99,7 +186,9 @@ display(airbnbDF)
 
 # TODO
 from sklearn.model_selection import train_test_split
-
+X = relevant_dataset.drop(["price"],axis = 1)
+y = relevant_dataset["price"]
+X_train, X_test, y_train, y_test = train_test_split(X, y.values.ravel(), random_state=42)
 
 # COMMAND ----------
 
@@ -119,6 +208,36 @@ from sklearn.model_selection import train_test_split
 # COMMAND ----------
 
 # TODO
+import mlflow.sklearn
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.metrics import mean_squared_error
+
+n_estimators = 1000
+max_depth = 10
+lr = 0.5
+
+with mlflow.start_run(run_name="GBoost-v2-model") as run:
+    # Create model, train it, and create predictions
+    gbf = GradientBoostingRegressor(n_estimators=n_estimators, max_depth=max_depth, learning_rate=lr)
+    gbf.fit(X_train, y_train)
+    predictions = gbf.predict(X_test)
+
+    # Log model
+    model_path = "Gradient Boosting Regressor"
+    mlflow.sklearn.log_model(gbf, model_path)
+
+    # Log params
+    mlflow.log_param("n_estimators", n_estimators)
+    mlflow.log_param("max_depth", max_depth)
+    mlflow.log_param("learning_rate", lr)
+
+    # Log metrics
+    mlflow.log_metric("mse", mean_squared_error(y_test, predictions))
+
+    #artifactURI = mlflow.get_artifact_uri()
+    model_output_path = "runs:/" + run.info.run_id + "/" + model_path
+    print(mean_squared_error(y_test, predictions))
 
 # COMMAND ----------
 
@@ -127,7 +246,7 @@ from sklearn.model_selection import train_test_split
 
 # COMMAND ----------
 
-# TODO
+
 
 # COMMAND ----------
 
@@ -137,8 +256,6 @@ from sklearn.model_selection import train_test_split
 
 # COMMAND ----------
 
-# TODO
-import mlflow.sklearn
 
 
 # COMMAND ----------
@@ -156,7 +273,9 @@ import mlflow.sklearn
 # COMMAND ----------
 
 # TODO
-import mlflow.pyfunc
+import mlflow.pyfunc 
+gbf_pyfunc_model = mlflow.pyfunc.load_model(model_uri="runs:/7644032172dc4318921033dc55dad264/Gradient Boosting Regressor")
+type(gbf_pyfunc_model)
 
 # COMMAND ----------
 
@@ -183,7 +302,9 @@ class Airbnb_Model(mlflow.pyfunc.PythonModel):
     
     def predict(self, context, model_input):
         # FILL_IN
-
+        prediction_val = self.model.predict(model_input)
+        price_per_person_per_night  = prediction_val/model_input["accommodates"]
+        return price_per_person_per_night
 
 # COMMAND ----------
 
@@ -193,9 +314,14 @@ class Airbnb_Model(mlflow.pyfunc.PythonModel):
 # COMMAND ----------
 
 # TODO
-final_model_path =  f"{working_path}/final-model"
+final_model_path =  f"{workingDir}/final-model3"
 
 # FILL_IN
+abnb_model = Airbnb_Model(gbf_pyfunc_model)
+print(final_model_path)
+dbutils.fs.rm(final_model_path.replace("dbfs:", "/dbfs"),True) # Allows you to rerun the code multiple times
+
+mlflow.pyfunc.save_model(path=final_model_path.replace("dbfs:", "/dbfs"), python_model=abnb_model)
 
 # COMMAND ----------
 
@@ -205,6 +331,9 @@ final_model_path =  f"{working_path}/final-model"
 # COMMAND ----------
 
 # TODO
+loaded_model = mlflow.pyfunc.load_model(final_model_path)
+price_per_person_night = loaded_model.predict(X_test)
+print(price_per_person_night)
 
 # COMMAND ----------
 
@@ -223,11 +352,17 @@ final_model_path =  f"{working_path}/final-model"
 # COMMAND ----------
 
 # TODO
-save the testing data 
+#save the testing data 
 test_data_path = f"{working_path}/test_data.csv"
 # FILL_IN
+X_test.to_csv(test_data_path,index =False)
 
 prediction_path = f"{working_path}/predictions.csv"
+price_per_person_night.to_csv(prediction_path,index=False)
+
+# COMMAND ----------
+
+display(X_test)
 
 # COMMAND ----------
 
@@ -248,9 +383,12 @@ import pandas as pd
 @click.option("--test_data_path", default="", type=str)
 @click.option("--prediction_path", default="", type=str)
 def model_predict(final_model_path, test_data_path, prediction_path):
-    # FILL_IN
-
-
+    # FILL_I
+    loaded_model = mlflow.pyfunc.load_model(final_model_path)
+    test_data = pd.read_csv(test_data_path)
+    predictions = loaded_model.predict(test_data)
+    
+    predictions.to_csv(prediction_path,index=False)
 # test model_predict function    
 demo_prediction_path = f"{working_path}/predictions.csv"
 
@@ -259,7 +397,7 @@ runner = CliRunner()
 result = runner.invoke(model_predict, ['--final_model_path', final_model_path, 
                                        '--test_data_path', test_data_path,
                                        '--prediction_path', demo_prediction_path], catch_exceptions=True)
-
+print(result.exception)
 assert result.exit_code == 0, "Code failed" # Check to see that it worked
 print("Price per person predictions: ")
 print(pd.read_csv(demo_prediction_path))
@@ -281,8 +419,11 @@ conda_env: conda.yaml
 entry_points:
   main:
     parameters:
-      #FILL_IN
-    command:  "python predict.py #FILL_IN"
+      final_model_path: {type: str, default: "/dbfs/mnt/training/airbnb/sf-listings/airbnb-cleaned-mlflow.csv"}
+      test_data_path: {type: int, default: 10}
+      prediction_path: {type: int, default: 20}
+      
+    command:  "python predict.py --final_model_path {final_model_path} --test_data_path {test_data_path} --prediction_path {prediction_path}"
 '''.strip(), overwrite=True)
 
 # COMMAND ----------
@@ -335,8 +476,15 @@ dbutils.fs.put(f"{workingDir}/predict.py",
 import click
 import mlflow.pyfunc
 import pandas as pd
-
-# put model_predict function with decorators here
+@click.command()
+@click.option("--final_model_path", default="", type=str)
+@click.option("--test_data_path", default="", type=str)
+@click.option("--prediction_path", default="", type=str)
+def model_predict(final_model_path, test_data_path, prediction_path):
+    loaded_model = mlflow.pyfunc.load_model(final_model_path)
+    test_data = pd.read_csv(test_data_path)
+    predictions = loaded_model.predict(test_data)
+    predictions.to_csv(prediction_path,index=False)
     
 if __name__ == "__main__":
   model_predict()
@@ -367,7 +515,11 @@ display( dbutils.fs.ls(workingDir) )
 # TODO
 second_prediction_path = f"{working_path}/predictions-2.csv"
 mlflow.projects.run(working_path,
-   # FILL_IN
+   parameters={
+    "final_model_path": final_model_path,
+    "test_data_path": test_data_path,
+    "prediction_path": second_prediction_path,
+}
 )
 
 # COMMAND ----------
