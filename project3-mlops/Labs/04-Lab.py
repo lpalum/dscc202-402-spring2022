@@ -44,10 +44,19 @@
 
 # COMMAND ----------
 
-dbutils.notebook.run("./04-Lab-Runnable", 60, 
+output = dbutils.notebook.run("./04-Lab-Runnable", 60, 
   {"n_estimators": "100",
    "learning_rate": ".1",
    "max_depth": "1"})
+
+
+
+# COMMAND ----------
+
+import json
+model_output_path = json.loads(output).get("model_output_path")
+data_path = json.loads(output).get("data_path")
+print(model_output_path,data_path)
 
 # COMMAND ----------
 
