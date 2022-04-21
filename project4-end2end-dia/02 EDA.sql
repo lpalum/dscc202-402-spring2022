@@ -23,12 +23,8 @@
 
 -- COMMAND ----------
 
--- MAGIC %python
--- MAGIC # Grab the global variables
--- MAGIC wallet_address,start_date = Utils.create_widgets()
--- MAGIC print(wallet_address,start_date)
--- MAGIC spark.conf.set('wallet.address',wallet_address)
--- MAGIC spark.conf.set('start.date',start_date)
+use ethereumetl;
+show tables;
 
 -- COMMAND ----------
 
@@ -93,7 +89,15 @@
 
 -- COMMAND ----------
 
--- TBD
+-- MAGIC %python
+-- MAGIC transaction = spark.sql("select * from ethereumetl.transactions")
+-- MAGIC display(transaction)
+-- MAGIC display(transaction.filter("block_number == 3300360"))
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC It looks like the transaction is ordered by the gas_price in a descending ordering 
 
 -- COMMAND ----------
 
@@ -103,7 +107,22 @@
 
 -- COMMAND ----------
 
--- TBD
+-- MAGIC %python
+-- MAGIC transaction = spark.sql("select * from ethereumetl.transactions")
+-- MAGIC rate = transaction.groupBy("block_number").count()
+-- MAGIC display(rate)
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC from pyspark.sql.functions import  desc
+-- MAGIC rate = rate.sort(desc("count"))
+-- MAGIC display(rate)
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC since the highest transaction block has transaction 1415, then the highest transaction per second is 94.33  
 
 -- COMMAND ----------
 
@@ -113,7 +132,26 @@
 
 -- COMMAND ----------
 
--- TBD
+-- MAGIC %python
+-- MAGIC 
+-- MAGIC transaction = spark.sql("select * from ethereumetl.transactions")
+-- MAGIC display(transaction)
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC from pyspark.sql.functions import  sum
+-- MAGIC total_value = transaction.select(sum('value')/(10**18)).collect()
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC total_value[0]
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC the total Ether volume is 4819303728.848482
 
 -- COMMAND ----------
 
