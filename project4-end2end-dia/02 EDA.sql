@@ -91,8 +91,7 @@ show tables;
 
 -- MAGIC %python
 -- MAGIC transaction = spark.sql("select * from ethereumetl.transactions")
--- MAGIC display(transaction)
--- MAGIC display(transaction.filter("block_number == 3300360"))
+-- MAGIC display(transaction.filter("block_number == 13856856"))
 
 -- COMMAND ----------
 
