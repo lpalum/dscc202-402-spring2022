@@ -23,17 +23,13 @@
 
 -- COMMAND ----------
 
--- MAGIC %python
--- MAGIC # Grab the global variables
--- MAGIC wallet_address,start_date = Utils.create_widgets()
--- MAGIC print(wallet_address,start_date)
--- MAGIC spark.conf.set('wallet.address',wallet_address)
--- MAGIC spark.conf.set('start.date',start_date)
+use ethereumetl;
+show tables;
 
 -- COMMAND ----------
 
 -- MAGIC %md
--- MAGIC ## Q: What is the maximum block number and date of block in the database
+-- MAGIC ## Q1: What is the maximum block number and date of block in the database
 
 -- COMMAND ----------
 
@@ -42,7 +38,7 @@
 -- COMMAND ----------
 
 -- MAGIC %md
--- MAGIC ## Q: At what block did the first ERC20 transfer happen?
+-- MAGIC ## Q2: At what block did the first ERC20 transfer happen?
 
 -- COMMAND ----------
 
@@ -51,7 +47,7 @@
 -- COMMAND ----------
 
 -- MAGIC %md
--- MAGIC ## Q: How many ERC20 compatible contracts are there on the blockchain?
+-- MAGIC ## Q3: How many ERC20 compatible contracts are there on the blockchain?
 
 -- COMMAND ----------
 
@@ -60,7 +56,7 @@
 -- COMMAND ----------
 
 -- MAGIC %md 
--- MAGIC ## Q: What percentage of transactions are calls to contracts
+-- MAGIC ## Q4: What percentage of transactions are calls to contracts
 
 -- COMMAND ----------
 
@@ -69,7 +65,7 @@
 -- COMMAND ----------
 
 -- MAGIC %md
--- MAGIC ## Q: What are the top 100 tokens based on transfer count?
+-- MAGIC ## Q5: What are the top 100 tokens based on transfer count?
 
 -- COMMAND ----------
 
@@ -78,7 +74,7 @@
 -- COMMAND ----------
 
 -- MAGIC %md
--- MAGIC ## Q: What fraction of ERC-20 transfers are sent to new addresses
+-- MAGIC ## Q6: What fraction of ERC-20 transfers are sent to new addresses
 -- MAGIC (i.e. addresses that have a transfer count of 1 meaning there are no other transfers to this address for this token this is the first)
 
 -- COMMAND ----------
@@ -88,64 +84,78 @@
 -- COMMAND ----------
 
 -- MAGIC %md
--- MAGIC ## Q: In what order are transactions included in a block in relation to their gas price?
+-- MAGIC ## Q7: In what order are transactions included in a block in relation to their gas price?
 -- MAGIC - hint: find a block with multiple transactions 
 
 -- COMMAND ----------
 
--- TBD
+-- MAGIC %python
+-- MAGIC transaction = spark.sql("select * from ethereumetl.transactions")
+-- MAGIC display(transaction.filter("block_number == 13856856"))
 
 -- COMMAND ----------
 
 -- MAGIC %md
--- MAGIC ## Q: What was the highest transaction throughput in transactions per second?
+-- MAGIC It looks like the transaction is ordered by the gas_price in a descending ordering 
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC ## Q8: What was the highest transaction throughput in transactions per second?
 -- MAGIC hint: assume 15 second block time
 
 -- COMMAND ----------
 
--- TBD
+-- MAGIC %python
+-- MAGIC transaction = spark.sql("select * from ethereumetl.transactions")
+-- MAGIC rate = transaction.groupBy("block_number").count()
+-- MAGIC display(rate)
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC from pyspark.sql.functions import  desc
+-- MAGIC rate = rate.sort(desc("count"))
+-- MAGIC display(rate)
 
 -- COMMAND ----------
 
 -- MAGIC %md
--- MAGIC ## Q: What is the total Ether volume?
+-- MAGIC since the highest transaction block has transaction 1415, then the highest transaction per second is 94.33  
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC ## Q9: What is the total Ether volume?
 -- MAGIC Note: 1x10^18 wei to 1 eth and value in the transaction table is in wei
 
 -- COMMAND ----------
 
--- TBD
+-- MAGIC %python
+-- MAGIC 
+-- MAGIC transaction = spark.sql("select * from ethereumetl.transactions")
+-- MAGIC display(transaction)
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC from pyspark.sql.functions import  sum
+-- MAGIC total_value = transaction.select(sum('value')/(10**18)).collect()
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC total_value[0]
 
 -- COMMAND ----------
 
 -- MAGIC %md
--- MAGIC ## Q: What is the total gas used in all transactions?
-
--- COMMAND ----------
-
--- TBD
+-- MAGIC the total Ether volume is 4819303728.848482
 
 -- COMMAND ----------
 
 -- MAGIC %md
--- MAGIC ## Q: Maximum ERC-20 transfers in a single transaction
-
--- COMMAND ----------
-
--- TBD
-
--- COMMAND ----------
-
--- MAGIC %md
--- MAGIC ## Q: Token balance for any address on any date?
-
--- COMMAND ----------
-
--- TBD
-
--- COMMAND ----------
-
--- MAGIC %md
--- MAGIC ## Viz the transaction count over time (network use)
+-- MAGIC ## Q10: What is the total gas used in all transactions?
 
 -- COMMAND ----------
 
@@ -154,7 +164,34 @@
 -- COMMAND ----------
 
 -- MAGIC %md
--- MAGIC ## Viz ERC-20 transfer count over time
+-- MAGIC ## Q11: Maximum ERC-20 transfers in a single transaction
+
+-- COMMAND ----------
+
+-- TBD
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC ## Q12: Token balance for any address on any date?
+
+-- COMMAND ----------
+
+-- TBD
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC ## Q13 Viz the transaction count over time (network use)
+
+-- COMMAND ----------
+
+-- TBD
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC ## Q14 Viz ERC-20 transfer count over time
 -- MAGIC interesting note: https://blog.ins.world/insp-ins-promo-token-mixup-clarified-d67ef20876a3
 
 -- COMMAND ----------

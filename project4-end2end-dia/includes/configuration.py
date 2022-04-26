@@ -1,11 +1,11 @@
 # Databricks notebook source
 ## Enter your group specific information here...
 
-GROUP='GXX'   # CHANGE TO YOUR GROUP NAME format Gxx
+GROUP='G08'   # CHANGE TO YOUR GROUP NAME format Gxx
 
 if GROUP not in ["G01","G02","G03","G04","G05","G06","G07","G08","G09","G10","G11","G12","G13","G14"]:
-  print("DONT FORGET TO SET YOUR GROUP NAME IN includes/configuration NOTEBOOK")
-  dbutils.notebook.exit(json.dumps({"exit_code": "BAD GROUP NAME"}))
+    print("DONT FORGET TO SET YOUR GROUP NAME IN includes/configuration NOTEBOOK")
+    dbutils.notebook.exit(json.dumps({"exit_code": "BAD GROUP NAME"}))
 
 # COMMAND ----------
 
