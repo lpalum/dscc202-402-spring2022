@@ -42,28 +42,7 @@ show tables;
 
 -- COMMAND ----------
 
--- MAGIC %python
--- MAGIC eth_df = spark.sql('select * from eth_token_prices_usd')
 
--- COMMAND ----------
-
--- MAGIC %python
--- MAGIC og_df = spark.sql('select * from token_prices_usd')
-
--- COMMAND ----------
-
--- MAGIC %python
--- MAGIC eth_df =  spark.sql('select * from eth_token_prices_usd')
--- MAGIC eth_df = eth_df.distinct()
--- MAGIC eth_df.registerTempTable("eth_token_prices_usd_distinct")
-
--- COMMAND ----------
-
-CREATE TABLE eth_token_prices_usd_unique AS SELECT * from eth_token_prices_usd_distinct
-
--- COMMAND ----------
-
-DROP table eth_token_prices_usd_unique
 
 -- COMMAND ----------
 
@@ -91,28 +70,18 @@ DROP table eth_token_prices_usd_unique
 -- COMMAND ----------
 
 -- MAGIC %python
--- MAGIC contracts = spark.sql("select * from silver_contracts").distinct()
--- MAGIC contracts.distinct().count()
-
--- COMMAND ----------
-
--- MAGIC %python 
--- MAGIC contracts = contracts.distinct()
+-- MAGIC contracts = spark.sql("select address from silver_contracts where is_erc20 == True").distinct()
 
 -- COMMAND ----------
 
 -- MAGIC %python
--- MAGIC contracts.count()
+-- MAGIC display(contracts)
 
 -- COMMAND ----------
 
 -- MAGIC %python 
--- MAGIC transactions = spark.sql('select * from transactions')
-
--- COMMAND ----------
-
--- MAGIC %python 
--- MAGIC transactions.count(), transactions.distinct().count()
+-- MAGIC transactions = spark.sql('select hash, to_address from transactions')
+-- MAGIC display(transactions)
 
 -- COMMAND ----------
 
@@ -121,14 +90,13 @@ DROP table eth_token_prices_usd_unique
 
 -- COMMAND ----------
 
--- MAGIC %python
--- MAGIC trns_contrs_inner.count()
+-- MAGIC %python 
+-- MAGIC pct_call_to_contracts = 100*trns_contrs_inner.count()/transactions.count()
+-- MAGIC print(f"{pct_call_to_contracts}% transactions are calls to contracts")
 
 -- COMMAND ----------
 
--- MAGIC %python 
--- MAGIC pct_call_to_contracts = 100*81410143/177974618
--- MAGIC print(f"{pct_call_to_contracts}% transactions are calls to contracts")
+create table g08_db.silver_erc20_contracts as select * from silver_contracts where is_erc20 == True
 
 -- COMMAND ----------
 
@@ -139,7 +107,6 @@ DROP table eth_token_prices_usd_unique
 
 -- MAGIC %python
 -- MAGIC token_transfers = spark.sql('select * from silver_erc20_token_transfers')
--- MAGIC # display(token_transfers)
 
 -- COMMAND ----------
 
@@ -164,12 +131,12 @@ DROP table eth_token_prices_usd_unique
 -- COMMAND ----------
 
 -- MAGIC %python
--- MAGIC sorted_token_count = sorted_transfer_count.join(tokens, sorted_transfer_count.token_address == tokens.address, "inner")
+-- MAGIC sorted_token_count = sorted_transfer_count.join(tokens, sorted_transfer_count.token_address == tokens.address, "inner").select("token_address", "symbol", "count").distinct()
 
 -- COMMAND ----------
 
 -- MAGIC %python
--- MAGIC sorted_token_count = sorted_token_count.sort(col("count").desc()).select("token_address", "symbol", "count").distinct().collect()
+-- MAGIC sorted_token_count = sorted_token_count.sort(col("count").desc()).collect()
 
 -- COMMAND ----------
 
@@ -186,14 +153,20 @@ DROP table eth_token_prices_usd_unique
 -- COMMAND ----------
 
 -- MAGIC %python
--- MAGIC transfer_groupedBy_to_address = token_transfers.groupBy("to_address").count()
--- MAGIC transfer_is_1 = transfer_groupedBy_to_address.filter("count = 1")
--- MAGIC transfer_is_1_count = transfer_is_1.count()
--- MAGIC 100*transfer_is_1_count/token_transfers.count()
+-- MAGIC token_transfers = spark.sql('select * from silver_erc20_token_transfers limit 20')
+-- MAGIC display(token_transfers)
 
 -- COMMAND ----------
 
+-- MAGIC %python
+-- MAGIC transfer_groupedBy_to_address = token_transfers.groupBy("to_address").count()
 
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC transfer_is_1 = transfer_groupedBy_to_address.filter("count = 1")
+-- MAGIC transfer_is_1_count = transfer_is_1.count()
+-- MAGIC print(f"{100*transfer_is_1_count/token_transfers.count()}%")
 
 -- COMMAND ----------
 
