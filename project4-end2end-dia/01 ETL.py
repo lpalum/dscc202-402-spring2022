@@ -41,11 +41,22 @@ spark.conf.set('start.date',start_date)
 
 # COMMAND ----------
 
-tokens = spark.table("ethereumetl.tokens")
+#Reading in the tables
+transactions = spark.table("ethereumetl.transactions")
+blocks = spark.table("ethereumetl.blocks")
+receipts = spark.table("ethereumetl.receipts")
+tokens = spark.table("ethereumetl.transactions")
+token_transfers = spark.table("ethereumetl.token_transfers")
+contracts = spark.table("ethereumetl.contracts")
+silver_contracts = spark.table("ethereumetl.silver_contracts")
+logs = spark.table("ethereumetl.logs")
+token_prices_usd = spark.table("ethereumetl.token_prices_usd") 
 
 # COMMAND ----------
 
-print(tokens)
+tables=[transactions,blocks,receipts,tokens,token_transfers,contracts,silver_contracts,logs,token_prices_usd] 
+for t in tables:
+    t.printSchema()
 
 # COMMAND ----------
 
