@@ -41,7 +41,11 @@ spark.conf.set('start.date',start_date)
 
 # COMMAND ----------
 
+tokens = spark.table("ethereumetl.tokens")
 
+# COMMAND ----------
+
+print(tokens)
 
 # COMMAND ----------
 
