@@ -69,6 +69,7 @@ print(wallet_address,start_date)
 # MAGIC     <br>
 # MAGIC     <br>
 # MAGIC     """
+# MAGIC     
 # MAGIC     displayHTML(result + table)
 
 # COMMAND ----------
