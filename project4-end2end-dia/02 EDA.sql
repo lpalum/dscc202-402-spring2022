@@ -70,7 +70,7 @@ show tables;
 -- COMMAND ----------
 
 -- MAGIC %python
--- MAGIC contracts = spark.sql("select address from silver_contracts where is_erc20 == True").distinct()
+-- MAGIC contracts = spark.sql("select address from silver_contracts").distinct()
 
 -- COMMAND ----------
 
@@ -96,7 +96,8 @@ show tables;
 
 -- COMMAND ----------
 
-create table g08_db.silver_erc20_contracts as select * from silver_contracts where is_erc20 == True
+-- MAGIC %python
+-- MAGIC # spark.sql.shuffle.partitions="auto"
 
 -- COMMAND ----------
 
@@ -106,7 +107,8 @@ create table g08_db.silver_erc20_contracts as select * from silver_contracts whe
 -- COMMAND ----------
 
 -- MAGIC %python
--- MAGIC token_transfers = spark.sql('select * from silver_erc20_token_transfers')
+-- MAGIC # token_transfers = spark.sql('select * from g08_db.silver_erc20_token_transfers')
+-- MAGIC token_transfers = spark.sql('select * from ethereumetl.token_transfers')
 
 -- COMMAND ----------
 
@@ -153,8 +155,9 @@ create table g08_db.silver_erc20_contracts as select * from silver_contracts whe
 -- COMMAND ----------
 
 -- MAGIC %python
--- MAGIC token_transfers = spark.sql('select * from silver_erc20_token_transfers limit 20')
--- MAGIC display(token_transfers)
+-- MAGIC token_transfers = spark.sql('select * from g08_db.silver_erc20_token_transfers')
+-- MAGIC token_transfers = token_transfers.filter(col("is_erc20")==True)
+-- MAGIC # display(token_transfers)
 
 -- COMMAND ----------
 
@@ -167,6 +170,11 @@ create table g08_db.silver_erc20_contracts as select * from silver_contracts whe
 -- MAGIC transfer_is_1 = transfer_groupedBy_to_address.filter("count = 1")
 -- MAGIC transfer_is_1_count = transfer_is_1.count()
 -- MAGIC print(f"{100*transfer_is_1_count/token_transfers.count()}%")
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC display(transfer_is_1)
 
 -- COMMAND ----------
 
