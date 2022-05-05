@@ -28,12 +28,17 @@ show tables;
 
 -- COMMAND ----------
 
+use ethereumetl;
+show tables;
+
+-- COMMAND ----------
+
 -- MAGIC %md
 -- MAGIC ## Q1: What is the maximum block number and date of block in the database
 
 -- COMMAND ----------
 
--- TBD
+
 
 -- COMMAND ----------
 
@@ -60,7 +65,35 @@ show tables;
 
 -- COMMAND ----------
 
--- TBD
+-- MAGIC %python
+-- MAGIC contracts = spark.sql("select address from silver_contracts").distinct()
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC display(contracts)
+
+-- COMMAND ----------
+
+-- MAGIC %python 
+-- MAGIC transactions = spark.sql('select hash, to_address from transactions')
+-- MAGIC display(transactions)
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC trns_contrs_inner = transactions.join(contracts, transactions.to_address == contracts.address, "inner")
+
+-- COMMAND ----------
+
+-- MAGIC %python 
+-- MAGIC pct_call_to_contracts = 100*trns_contrs_inner.count()/transactions.count()
+-- MAGIC print(f"{pct_call_to_contracts}% transactions are calls to contracts")
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC # spark.sql.shuffle.partitions="auto"
 
 -- COMMAND ----------
 
@@ -69,7 +102,45 @@ show tables;
 
 -- COMMAND ----------
 
--- TBD
+-- MAGIC %python
+-- MAGIC # token_transfers = spark.sql('select * from g08_db.silver_erc20_token_transfers')
+-- MAGIC token_transfers = spark.sql('select * from ethereumetl.token_transfers')
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC transfer_count = token_transfers.groupBy("token_address").count()
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC tokens = spark.sql('select * from tokens')
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC sorted_transfer_count = transfer_count.sort(col("count").desc())
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC sorted_transfer_count.show(5)
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC sorted_token_count = sorted_transfer_count.join(tokens, sorted_transfer_count.token_address == tokens.address, "inner").select("token_address", "symbol", "count").distinct()
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC sorted_token_count = sorted_token_count.sort(col("count").desc()).collect()
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC for row in sorted_token_count:
+-- MAGIC     print(row[1], row[2])
 
 -- COMMAND ----------
 
@@ -79,7 +150,27 @@ show tables;
 
 -- COMMAND ----------
 
--- TBD
+-- MAGIC %python
+-- MAGIC token_transfers = spark.sql('select * from g08_db.silver_erc20_token_transfers')
+-- MAGIC token_transfers = token_transfers.filter(col("is_erc20")==True)
+-- MAGIC # display(token_transfers)
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC transfer_groupedBy_to_address = token_transfers.groupBy("to_address").count()
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC transfer_is_1 = transfer_groupedBy_to_address.filter("count = 1")
+-- MAGIC transfer_is_1_count = transfer_is_1.count()
+-- MAGIC print(f"{100*transfer_is_1_count/token_transfers.count()}%")
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC display(transfer_is_1)
 
 -- COMMAND ----------
 
