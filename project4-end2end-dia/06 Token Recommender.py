@@ -25,9 +25,9 @@ print(wallet_address,start_date)
 # MAGIC %python
 # MAGIC #Mock Data --> Replace with real data
 # MAGIC data = [
-# MAGIC     ("https://assets.coingecko.com/coins/images/18581/thumb/soul.jpg?1632491969", "AppCoins","(APPC)", "https://appcoins.io/"),
-# MAGIC     ("https://assets.coingecko.com/coins/images/18581/thumb/soul.jpg?1632491969", "AppCoins","(APPC)", "https://appcoins.io/"),
-# MAGIC     ("https://assets.coingecko.com/coins/images/18581/thumb/soul.jpg?1632491969", "AppCoins","(APPC)", "https://appcoins.io/"),
+# MAGIC     ("https://assets.coingecko.com/coins/images/18581/thumb/soul.jpg?1632491969", "AppCoins","(APPC)", "0x1a7a8bd9106f2b8d977e08582dc7d24c723ab0db"),
+# MAGIC     ("https://assets.coingecko.com/coins/images/18581/thumb/soul.jpg?1632491969", "AppCoins","(APPC)", "0x1a7a8bd9106f2b8d977e08582dc7d24c723ab0db"),
+# MAGIC     ("https://assets.coingecko.com/coins/images/18581/thumb/soul.jpg?1632491969", "AppCoins","(APPC)", "0x1a7a8bd9106f2b8d977e08582dc7d24c723ab0db"),
 # MAGIC 
 # MAGIC ]
 
@@ -47,12 +47,13 @@ print(wallet_address,start_date)
 # MAGIC     """
 # MAGIC     rows = ""
 # MAGIC     for d in recommendations:
-# MAGIC         icon, name, symbol, link = d
+# MAGIC         icon, name, symbol, address = d
+# MAGIC #         print(f"https://etherscan.io/token/{address}")
 # MAGIC         rows += f"""
 # MAGIC         <tr>
 # MAGIC         <td style="text-align:center"><img src="{icon}" alt="{name}"></td>
 # MAGIC         <td style="text-align:center">{name} {symbol}</td>
-# MAGIC         <td style="text-align:center"><a href="{link}">Website</a></td>
+# MAGIC         <td style="text-align:center"><a href="https://etherscan.io/token/{address}">Website</a></td>
 # MAGIC         </tr>
 # MAGIC         """
 # MAGIC 
