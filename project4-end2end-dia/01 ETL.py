@@ -41,9 +41,299 @@ spark.conf.set('start.date',start_date)
 
 # COMMAND ----------
 
+#utility functions
+def clear_prev_folders():
+    dbutils.fs.rm(BASE_DELTA_PATH+"/bronze/", True)
+    dbutils.fs.rm(BASE_DELTA_PATH+"/bronze_plus/",True)
+    dbutils.fs.rm(BASE_DELTA_PATH+"/silver/",True)
+    dbutils.fs.rm(BASE_DELTA_PATH+"/silver_plus/",True)
+    
+    
+    dbutils.fs.mkdirs(BASE_DELTA_PATH+"/bronze/")
+    dbutils.fs.mkdirs(BASE_DELTA_PATH+"/bronze_plus/")
+    dbutils.fs.mkdirs(BASE_DELTA_PATH+"/silver/")
+    dbutils.fs.mkdirs(BASE_DELTA_PATH+"/silver_plus/")
+    print("successfully deleted the folders")
+        
+
+# COMMAND ----------
+
+#DO NOT run this if you don't want to things start over
+#make sure we delete all the previous folders before each run
+
+
+clear_prev_folders()
+
+# COMMAND ----------
+
+#giving each path a unique name
+bronze_path = BASE_DELTA_PATH+"/bronze/"
+
+bronze_plus_path = BASE_DELTA_PATH+"/bronze_plus/"
+
+silver_path = BASE_DELTA_PATH+"/silver/"
+
+silver_plus_path = BASE_DELTA_PATH+"/silver_plus/"
+
+#asserting the path 
+print(bronze_path)
+
+print(bronze_plus_path)
+
+print(silver_path)
+
+print(silver_plus_path)
 
 
 # COMMAND ----------
 
-# Return Success
-dbutils.notebook.exit(json.dumps({"exit_code": "OK"}))
+# MAGIC %md ## Table: ERC20_token_table
+# MAGIC Filtered from ethereumetl.token_prices_usd, all tokens in here are unique and ERC20
+
+# COMMAND ----------
+
+#start first by filtering out the unrelated token only take ERC20 tokens from token price usd 
+ERC20_token_table = spark.sql("select contract_address, name from ethereumetl.token_prices_usd where asset_platform_id== 'ethereum' ").distinct()
+
+# COMMAND ----------
+
+ERC20_token_table.count()
+
+# COMMAND ----------
+
+
+
+
+#we want to get transaction information
+transaction_df = spark.sql("select to_address, value, block_hash, hash as transact_hash from ethereumetl.transactions")
+#we also want the token_transfer table because it has token information
+token_transfer_df = spark.sql("select token_address,transaction_hash from ethereumetl.token_transfers")
+
+
+
+
+# COMMAND ----------
+
+token_transfer_df.count()
+
+# COMMAND ----------
+
+# MAGIC %md ## Table: block_short
+# MAGIC unique block hash with timestamp
+
+# COMMAND ----------
+
+#block_short gives you timestamp of each transaction ???
+block_short = spark.sql("select hash, timestamp from g08_db.blocks_ts_clean")
+
+# COMMAND ----------
+
+# MAGIC %md ##Table: ERC20_contract
+# MAGIC Unique ERC20 contracts, but include non-recommend-worthy tokens
+
+# COMMAND ----------
+
+
+## this table is used to filter out the token contract address from to address
+ERC20_contract = spark.sql("select address from ethereumetl.silver_contracts where is_erc20==True")
+
+# COMMAND ----------
+
+ERC20_contract.count()
+
+# COMMAND ----------
+
+# MAGIC %md ## CREATING BRONZE TABLE...
+# MAGIC bronze table: we only take to_address from the token transfer that are personal wallet but not smart contracts and filter out the non ERC20 tokens
+
+# COMMAND ----------
+
+# MAGIC %md ## Table: bronze_init
+# MAGIC bronze_init: token_transfer inner join with ERC20_token_table
+# MAGIC 
+# MAGIC All tokens and transactions in this table are ERC20, and involves the 1149 tokens that we can recommend 
+# MAGIC 
+# MAGIC In total we have 900 million token transactions on chain, among them 537() millions transaction involves the 1149 tokens that we can recommend
+
+# COMMAND ----------
+
+bronze_init =token_transfer_df.join(ERC20_token_table, token_transfer_df.token_address== ERC20_token_table.contract_address, "inner").drop("contract_address").distinct()
+
+# COMMAND ----------
+
+bronze_init.count()
+# which means we have 537 million ERC20 transactions
+
+# COMMAND ----------
+
+# MAGIC %md ##Table: bronze_init_1
+# MAGIC bronze_init_1: bronze_init inner join transaction_df on transaction hash to get block hash.
+# MAGIC 
+# MAGIC Assigned block hash to each transaction_hash
+# MAGIC 
+# MAGIC Compare with 537 million ERC20 transactions, now we only have 56 million transactions, which 
+# MAGIC means 90% ERC20 token transactions are not recorded in transaction table 
+# MAGIC 
+# MAGIC Hypothesis: 
+# MAGIC token_transfer recorded many transaction during 2018-2021, however, 
+# MAGIC transaction table did not record that time period
+
+# COMMAND ----------
+
+bronze_init_1 = bronze_init.join(transaction_df, bronze_init.transaction_hash == transaction_df.transact_hash).drop("transact_hash")
+
+
+# COMMAND ----------
+
+bronze_init_1.count()
+
+
+# COMMAND ----------
+
+# MAGIC %md ## Table: bronze_df
+# MAGIC 
+# MAGIC bronze_df: left antijoin bronze_init_1 with ERC20_contract on to_address to filter out the contract address.
+# MAGIC 
+# MAGIC because we only care about user wallet address. 
+
+# COMMAND ----------
+
+# perform left antijoin to filter out the contract address. 
+
+bronze_df = bronze_init_1.join(ERC20_contract, bronze_init_1.to_address == ERC20_contract.address, "leftanti").select("*").where(col("value")>0)
+
+
+# COMMAND ----------
+
+#store the dataframe into the bronze_path
+print(bronze_df.count())
+
+# COMMAND ----------
+
+display(bronze_df)
+
+# COMMAND ----------
+
+#write bronze_df into the bronze_path
+
+bronze_df.write.format('delta').save(bronze_path)
+
+# COMMAND ----------
+
+# bronze_df.write.format('delta').saveAsTable("g08_db.bronze_table")
+
+# COMMAND ----------
+
+# MAGIC %md ## Table: bronze plus
+# MAGIC bronze plus: rename the bronze_table.contract_address to bronze_table.wallet_address
+
+# COMMAND ----------
+
+bronze_df = spark.read.format('delta').load(bronze_path)
+display(bronze_df)
+
+# COMMAND ----------
+
+bronze_df.count()
+
+# COMMAND ----------
+
+bronze_plus_df = bronze_df.withColumnRenamed("to_address","wallet_address").withColumnRenamed("value","wai_value")
+
+# COMMAND ----------
+
+
+bronze_plus_df.write.format('delta').save(bronze_plus_path)
+
+# COMMAND ----------
+
+# bronze_plus_df.write.format('delta').saveAsTable("g08_db.bronze_plus_table")
+
+# COMMAND ----------
+
+# MAGIC %md ## Table: token_transaction_rank
+# MAGIC rank most popular token based on # of transaction on the chain
+
+# COMMAND ----------
+
+## to deal with the cold start problem, I ranked the most used token for all ERC20 token transactions
+from pyspark.sql.functions import col
+token_transaction_rank = bronze_plus_df.groupBy("name","token_address").count().sort(col("count").desc())
+
+# COMMAND ----------
+
+#token_transaction_rank.write.format('delta').saveAsTable("g08_db.token_transaction_rank")
+
+# COMMAND ----------
+
+# MAGIC %md ## Table: silver_df
+# MAGIC we need to add dates into our bronze table. 
+
+# COMMAND ----------
+
+bronze_plus_df = spark.read.format('delta').load(bronze_plus_path)
+display(bronze_plus_df)
+
+# COMMAND ----------
+
+bronze_plus_df.join(block_short,bronze_plus_df.block_hash==block_short.hash,"inner").drop('hash').write.format('delta').save(silver_path)
+
+# COMMAND ----------
+
+silver_df = spark.read.format("delta").load(silver_path)
+
+
+# COMMAND ----------
+
+#silver_df.write.format('delta').saveAsTable("g08_db.silver_table")
+
+
+# COMMAND ----------
+
+display(silver_df)
+
+# COMMAND ----------
+
+# MAGIC %md ## Table: silver_plus_table
+# MAGIC 
+# MAGIC encode wallet_address and token_address to long 
+# MAGIC 
+# MAGIC added col new_wallet_id and new_token_id
+# MAGIC 
+# MAGIC data from 2016 to 2022 (with 2017-2021 missing)
+
+# COMMAND ----------
+
+unique_wallet = silver_df.select("wallet_address").distinct().withColumn('new_wallet_id',monotonically_increasing_id()).withColumnRenamed("wallet_address","w_address")
+display(unique_wallet)
+unique_token = silver_df.select("token_address").distinct().withColumn('new_token_id',monotonically_increasing_id()).withColumnRenamed("token_address","t_address")
+display(unique_token)
+
+# COMMAND ----------
+
+silver_plus_table_inter = silver_table.join(unique_wallet, silver_table.wallet_address==unique_wallet.w_address,"inner").drop("w_address")
+silver_plus_table = silver_plus_table_inter.join(unique_token, silver_plus_table_inter.token_address == unique_token.t_address, "inner").drop("t_address")
+display(silver_plus_table)
+
+# COMMAND ----------
+
+silver_plus_table.write.format("delta").save(silver_plus_path)
+
+
+# COMMAND ----------
+
+silver_plus_table.write.format("delta").saveAsTable("g08_db.silver_plus_table")
+
+# COMMAND ----------
+
+# MAGIC %md ## Table: silver_2022
+# MAGIC silver data after 2022-01-01
+
+# COMMAND ----------
+
+silver_2022 = silver_plus_table.select("*").where(col("timestamp")>start_date)
+print(new_silver.count())
+
+# COMMAND ----------
+
+silver_2022.write.format("delta").saveAsTable("g08_db.silver_2022_01_01")
