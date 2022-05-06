@@ -40,26 +40,6 @@
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC 
-# MAGIC     in silver dataset: triplet: [user_id, token_id, value rating], meta_id(descriptive data map to the triplet, like url image ), map image to ethereum account,
-# MAGIC     
-# MAGIC     create stage model to compare and contrast production model (? might be other name)
-# MAGIC     
-# MAGIC     hyperparameter for collaborative filtering is what make each project unique
-# MAGIC     
-# MAGIC     capture root mean square error in models 
-# MAGIC     
-# MAGIC     hints:
-# MAGIC       - crate a small silver data first for model building person, and ETL can work at the same time as well 
-# MAGIC     
-# MAGIC     
-# MAGIC     monitoring module: 
-# MAGIC     recommendation:
-# MAGIC       did recommendation change betwen production and staging model? are there similar tokens? is there radical change 
-
-# COMMAND ----------
-
-# MAGIC %md
 # MAGIC ## Grading
 # MAGIC **Project is Due no later than May 6th 2022**
 # MAGIC <p>Each student in a given group should participate in the design and development of the application.  The group should coordinate and divide up the responsibilities needed to complete the project. Group Submission of your Data-Intensive Application should be done via blackboard by submitting the GitHub repo URL and specifying the “branch” of the repo that contains your code to be graded.
@@ -100,9 +80,9 @@
 
 # COMMAND ----------
 
-wallet_address, start_date = Utils.create_widgets()
+wallet_address, start_date, fractional = Utils.create_widgets()
 
-print(wallet_address, start_date)
+print(wallet_address, start_date, fractional)
 
 # COMMAND ----------
 

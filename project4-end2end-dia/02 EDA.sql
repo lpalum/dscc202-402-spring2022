@@ -25,10 +25,10 @@
 
 -- MAGIC %python
 -- MAGIC # Grab the global variables
--- MAGIC wallet_address,start_date = Utils.create_widgets()
--- MAGIC print(wallet_address,start_date)
--- MAGIC spark.conf.set('wallet.address',wallet_address)
--- MAGIC spark.conf.set('start.date',start_date)
+-- MAGIC # wallet_address,start_date = Utils.create_widgets()
+-- MAGIC # print(wallet_address,start_date)
+-- MAGIC # spark.conf.set('wallet.address',wallet_address)
+-- MAGIC # spark.conf.set('start.date',start_date)
 
 -- COMMAND ----------
 
