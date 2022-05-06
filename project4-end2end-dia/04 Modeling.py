@@ -17,11 +17,7 @@
 
 # COMMAND ----------
 
-display(dbutils.fs.ls(BASE_DELTA_PATH+"bronze/"))
-
-# COMMAND ----------
-
-  # Grab the global variables
+# Grab the global variables
 wallet_address,start_date = Utils.create_widgets()
 print(wallet_address,start_date)
 
@@ -470,7 +466,6 @@ Build out the required plumbing and electrical work:
 
 
 # COMMAND ----------
-
 
 
 # COMMAND ----------
