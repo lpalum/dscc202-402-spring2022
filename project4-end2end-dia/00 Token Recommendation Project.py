@@ -80,9 +80,9 @@
 
 # COMMAND ----------
 
-wallet_address, start_date = Utils.create_widgets()
+wallet_address, start_date, fractional = Utils.create_widgets()
 
-print(wallet_address, start_date)
+print(wallet_address, start_date, fractional)
 
 # COMMAND ----------
 
@@ -98,7 +98,7 @@ print(wallet_address, start_date)
 # COMMAND ----------
 
 # run link to the ETL notebook
-result_etl = dbutils.notebook.run("01 ETL", 0, {"00.Wallet_Address":wallet_address, "01.Start_Date":start_date})
+result_mlops = dbutils.notebook.run("04 Modeling", 0, {"00.Wallet_Address":wallet_address, "01.Start_Date":start_date, "02.Fraction_Of_Data_Used_For_Model":fractional})
 
 # Check for success
 assert json.loads(result_etl)["exit_code"] == "OK", "ETL Failed!" # Check to see that it worked
@@ -113,7 +113,7 @@ assert json.loads(result_etl)["exit_code"] == "OK", "ETL Failed!" # Check to see
 # COMMAND ----------
 
 # run link to the EDA notebook
-result_eda = dbutils.notebook.run("02 EDA", 0,  {"00.Wallet_Address":wallet_address, "01.Start_Date":start_date})
+result_mlops = dbutils.notebook.run("04 Modeling", 0, {"00.Wallet_Address":wallet_address, "01.Start_Date":start_date, "02.Fraction_Of_Data_Used_For_Model":fractional})
 
 # Check for success
 assert json.loads(result_eda)["exit_code"] == "OK", "EDA Failed!" # Check to see that it worked
@@ -131,7 +131,7 @@ assert json.loads(result_eda)["exit_code"] == "OK", "EDA Failed!" # Check to see
 # COMMAND ----------
 
 # run link to the modeling notebook
-result_mlops = dbutils.notebook.run("04 Modeling", 0, {"00.Wallet_Address":wallet_address, "01.Start_Date":start_date})
+result_mlops = dbutils.notebook.run("04 Modeling", 0, {"00.Wallet_Address":wallet_address, "01.Start_Date":start_date, "02.Fraction_Of_Data_Used_For_Model": fractional})
 
 # Check for success
 assert json.loads(result_mlops)["exit_code"] == "OK", "Modeling Failed!" # Check to see that it worked
@@ -147,7 +147,7 @@ assert json.loads(result_mlops)["exit_code"] == "OK", "Modeling Failed!" # Check
 # COMMAND ----------
 
 # run link to the monitoring notebook
-result_mon = dbutils.notebook.run("05 Monitoring", 0, {"00.Wallet_Address":wallet_address, "01.Start_Date":start_date})
+result_mon = dbutils.notebook.run("05 Monitoring", 0, {"00.Wallet_Address":wallet_address, "01.Start_Date":start_date, "02.Fraction_Of_Data_Used_For_Model": fractional})
 
 # Check for success
 assert json.loads(result_mon)["exit_code"] == "OK", "Monitoring Failed!" # Check to see that it worked
@@ -164,7 +164,7 @@ assert json.loads(result_mon)["exit_code"] == "OK", "Monitoring Failed!" # Check
 # COMMAND ----------
 
 # run link to the application notebook
-result_dash = dbutils.notebook.run("06 Token Recommender", 0, {"00.Wallet_Address":wallet_address, "01.Start_Date":start_date})
+result_dash = dbutils.notebook.run("06 Token Recommender", 0, {"00.Wallet_Address":wallet_address, "01.Start_Date":start_date,  "02.Fraction_Of_Data_Used_For_Model": fractional})
 
 # Check for success
 assert json.loads(result_dash)["exit_code"] == "OK", "Token Recommendation Application Failed!" # Check to see that it worked

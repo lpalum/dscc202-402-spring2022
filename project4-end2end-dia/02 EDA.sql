@@ -77,6 +77,7 @@ show tables;
 -- MAGIC %md
 -- MAGIC The Maximum block number is 14044000
 
+
 -- COMMAND ----------
 
 -- MAGIC %md
@@ -157,6 +158,7 @@ show tables;
 -- MAGIC sorted_token_count = sorted_token_count.sort(col("count").desc()).na.drop("all")
 -- MAGIC display(sorted_token_count)
 
+
 -- COMMAND ----------
 
 -- MAGIC %md
@@ -165,12 +167,9 @@ show tables;
 
 -- COMMAND ----------
 
-select count(distinct(*)) from ethereumetl.token_transfers
-
--- COMMAND ----------
-
 -- MAGIC %python
 -- MAGIC token_original = spark.sql('select * from ethereumetl.token_transfers').dropDuplicates()
+
 
 -- COMMAND ----------
 
