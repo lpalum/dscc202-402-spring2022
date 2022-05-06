@@ -43,8 +43,10 @@ spark.conf.set('start.date',start_date)
 
 #utility functions
 def clear_prev_folders():
+    dbutils.fs.rm(BASE_DELTA_PATH+"/bronze/",True)
     dbutils.fs.rm(BASE_DELTA_PATH+"/silver/",True) 
-    
+ 
+    dbutils.fs.mkdirs(BASE_DELTA_PATH+"/bronze/")
     dbutils.fs.mkdirs(BASE_DELTA_PATH+"/silver/")
     print("successfully deleted the folders")
     
@@ -59,7 +61,8 @@ clear_prev_folders()
 
 #giving each path a unique name
 
-silver_path = BASE_DELTA_PATH+"/silver/"
+bronze_path = BASE_DELTA_PATH+"bronze/"
+silver_path = BASE_DELTA_PATH+"silver/"
 from pyspark.sql.functions import *
 from pyspark.sql import functions as f
 from pyspark.sql import types as t
@@ -67,7 +70,6 @@ from pyspark.sql import types as t
 #asserting the path 
 
 print(silver_path)
-
 
 
 # COMMAND ----------
@@ -82,9 +84,6 @@ ERC20_token_table = spark.sql("select contract_address, name from ethereumetl.to
 
 # COMMAND ----------
 
-ERC20_token_table.count()
-
-# COMMAND ----------
 
 #we also want the token_transfer table because it has token information
 token_transfer_df = spark.sql("select token_address,transaction_hash,to_address from ethereumetl.token_transfers")
@@ -115,11 +114,11 @@ bronze_init =token_transfer_df.join(ERC20_token_table, token_transfer_df.token_a
 
 # COMMAND ----------
 
-# MAGIC %md ## Table: bronze_df_inter
+# MAGIC %md ## Table: bronze_df_plus
 # MAGIC 
 # MAGIC bronze_df: left antijoin bronze_init_1 with ERC20_contract on to_address to filter out the contract address.
 # MAGIC 
-# MAGIC because we only care about user wallet address. 
+# MAGIC because we only care about user wallet address. then store in bronze path
 
 # COMMAND ----------
 
@@ -132,45 +131,69 @@ bronze_df_plus = bronze_df.groupBy("to_address","token_address").count().withCol
 
 # COMMAND ----------
 
-unique_wallet = bronze_df_plus.select("wallet_address").distinct().withColumn('new_wallet_id',monotonically_increasing_id().cast(IntegerType())).withColumnRenamed("wallet_address","w_address")
+bronze_df_plus.write.format("delta").option("mergeSchema", "true").partitionBy("token_address").save(bronze_path)
 
-unique_token = bronze_df_plus.select("token_address").distinct().withColumn('new_token_id',monotonically_increasing_id().cast(IntegerType())).withColumnRenamed("token_address","t_address")
+# COMMAND ----------
+
+display(spark.sql("DROP TABLE  IF EXISTS delta_bronze"))
+ 
+display(spark.sql("CREATE TABLE delta_bronze USING DELTA LOCATION '/mnt/dscc202-datasets/misc/G08/tokenrec/tables/bronze/'"))
+                  
+display(spark.sql("OPTIMIZE delta_bronze ZORDER BY (count)"))
+
+# COMMAND ----------
+
+triplet = spark.read.format("delta").load(bronze_path)
+display(triplet)
+
+# COMMAND ----------
+
+# MAGIC %md ## Table: Silver Table 
+# MAGIC bronze plus: encode the wallet address and token address
+
+# COMMAND ----------
+
+silver_table = triplet.filter(col('count')>1)
+display(silver_table)
+print(silver_table.count())
+
+# COMMAND ----------
+
+unique_wallet = silver_table.select("wallet_address").distinct().withColumn('new_wallet_id',monotonically_increasing_id().cast(IntegerType())).withColumnRenamed("wallet_address","w_address")
+
+unique_token = silver_table.select("token_address").distinct().withColumn('new_token_id',monotonically_increasing_id().cast(IntegerType())).withColumnRenamed("token_address","t_address")
 
 
 
 # COMMAND ----------
 
-silver_df_inter = bronze_df_plus.join(unique_wallet, bronze_df_plus.wallet_address == unique_wallet.w_address,"inner").drop("w_address")
-silver_df = silver_df_inter.join(unique_token, bronze_df_plus.token_address == unique_token.t_address,"inner").drop("t_address")
+silver_df_inter = silver_table.join(unique_wallet, silver_table.wallet_address == unique_wallet.w_address,"inner").drop("w_address")
+silver_df = silver_df_inter.join(unique_token, silver_df_inter .token_address == unique_token.t_address,"inner").drop("t_address")
 silver_df = silver_df.withColumn("count", silver_df["count"].cast(IntegerType()))
 
 # COMMAND ----------
 
-spark.sql("drop table if exists g08_db.silver_table")
-silver_df.write.format("delta").saveAsTable("g08_db.silver_table")
+# spark.sql("drop table if exists g08_db.silver_table")
+# silver_df.write.format("delta").saveAsTable("g08_db.silver_table")
 
 # COMMAND ----------
 
-silver_df.write.format('delat').option("mergeSchema", "true").save(silver_path)
-
-# COMMAND ----------
-
-# MAGIC %md ## Table: bronze plus
-# MAGIC bronze plus: rename the bronze_table.contract_address to bronze_table.wallet_address
+silver_df.write.format('delta').option("mergeSchema", "true").partitionBy("new_token_id").save(silver_path)
 
 # COMMAND ----------
 
 display(spark.sql("DROP TABLE  IF EXISTS delta_silver"))
  
-display(spark.sql("CREATE TABLE flights USING DELTA LOCATION '/mnt/dscc202-datasets/misc/G08/tokenrec/tables/silver/'"))
+display(spark.sql("CREATE TABLE delta_silver USING DELTA LOCATION '/mnt/dscc202-datasets/misc/G08/tokenrec/tables/silver/'"))
                   
-display(spark.sql("OPTIMIZE delta_silver ZORDER BY (count)"))
+display(spark.sql("OPTIMIZE delta_silver ZORDER BY (token_address)"))
 
 # COMMAND ----------
 
 silver_df = spark.read.format('delta').load(silver_path)
-display(bronze_df)
+display(silver_df)
 
 # COMMAND ----------
 
-
+# Return Success
+dbutils.notebook.exit(json.dumps({"exit_code": "OK"}))

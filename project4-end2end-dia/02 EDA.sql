@@ -107,13 +107,13 @@ show tables;
 -- MAGIC contracts = spark.sql("select address from ethereumetl.silver_contracts").distinct()
 -- MAGIC transactions = spark.sql('select hash, to_address from ethereumetl.transactions')
 -- MAGIC trns_contrs_inner = transactions.join(contracts, transactions.to_address == contracts.address, "inner")
--- MAGIC pct_call_to_contracts = 100*trns_contrs_inner.count()/transactions.count()
+-- MAGIC pct_call_to_contracts = 100*trns_contrs_inner.distinct().count()/transactions.distinct().count()
 -- MAGIC print(f"{pct_call_to_contracts}% transactions are calls to contracts")
 
 -- COMMAND ----------
 
 -- MAGIC %md
--- MAGIC 45.7425580764556% transactions are calls to contracts
+-- MAGIC 45.74135958458722% transactions are calls to contracts
 
 -- COMMAND ----------
 
@@ -128,9 +128,8 @@ show tables;
 -- MAGIC tokens = spark.sql('select * from ethereumetl.tokens')
 -- MAGIC sorted_transfer_count = transfer_count.sort(col("count").desc())
 -- MAGIC sorted_token_count = sorted_transfer_count.join(tokens, sorted_transfer_count.token_address == tokens.address, "inner").select("token_address", "symbol", "count").distinct()
--- MAGIC sorted_token_count = sorted_token_count.sort(col("count").desc()).collect()
--- MAGIC for row in sorted_token_count:
--- MAGIC     print(row[1], row[2])
+-- MAGIC sorted_token_count = sorted_token_count.sort(col("count").desc()).na.drop("all")
+-- MAGIC display(sorted_token_count)
 
 -- COMMAND ----------
 
@@ -141,16 +140,15 @@ show tables;
 -- COMMAND ----------
 
 -- MAGIC %python
--- MAGIC token_transfers = spark.sql('select * from g08_db.silver_erc20_token_transfers')
--- MAGIC token_transfers = token_transfers.filter(col("is_erc20")==True)
--- MAGIC transfer_groupedBy_to_address = token_transfers.groupBy("to_address").count()
--- MAGIC transfer_is_1 = transfer_groupedBy_to_address.filter("count = 1")
--- MAGIC transfer_is_1_count = transfer_is_1.count()
--- MAGIC print(f"{100*transfer_is_1_count/token_transfers.count()}%")
+-- MAGIC token_transfers = spark.sql('select * from ethereumetl.token_transfers')
+-- MAGIC q6_table = token_transfers.groupBy("to_address").count()
+-- MAGIC transfer_is_1 = q6_table.filter("count = 1")
+-- MAGIC transfer_is_1_count = transfer_is_1.distinct().count()
+-- MAGIC print(f"{100*transfer_is_1_count/token_transfers.distinct().count()}%")
 
 -- COMMAND ----------
 
--- MAGIC %md
+-- MAGIC %md 29
 -- MAGIC 9.52785% of the ERC20 transfers are sent to new addresses
 
 -- COMMAND ----------
@@ -179,19 +177,19 @@ show tables;
 -- COMMAND ----------
 
 -- MAGIC %python
--- MAGIC transaction = spark.sql("select * from ethereumetl.transactions")
--- MAGIC rate = transaction.groupBy("block_number").count()
+-- MAGIC transaction = spark.sql("select * from ethereumetl.blocks")
+-- MAGIC rate = transaction.groupBy("number").sum("transaction_count")
 
 -- COMMAND ----------
 
 -- MAGIC %python
--- MAGIC rate = rate.sort(desc("count"))
+-- MAGIC rate = rate.sort(desc("sum(transaction_count)"))
 -- MAGIC display(rate)
 
 -- COMMAND ----------
 
 -- MAGIC %md
--- MAGIC since the highest transaction block has transaction 1415, then the highest transaction per second is 94.33  
+-- MAGIC since the highest transaction block has transaction 1431, then the highest transaction per second is 95.4  
 
 -- COMMAND ----------
 
@@ -333,19 +331,19 @@ show tables;
 -- MAGIC #In order to find the transaction count on a given day. we need the following tables: blocks_ts_clean from our group database. 
 -- MAGIC # and transaction table from ethereumetl. I only picked the most relavant features from both tables to avoid distraction.
 -- MAGIC # i made two new table short_block for and short_transaction 
--- MAGIC short_block = spark.sql("select hash as hash_block,timestamp from g08_db.blocks_ts_clean ")
--- MAGIC display(short_block)
--- MAGIC short_transaction = spark.sql("select block_hash,to_address,from_address,value from ethereumetl.transactions")
--- MAGIC display(short_transaction)
+-- MAGIC # short_block = spark.sql("select hash as hash_block,timestamp from g08_db.blocks_ts_clean ")
+-- MAGIC # display(short_block)
+-- MAGIC # short_transaction = spark.sql("select block_hash,to_address,from_address,value from ethereumetl.transactions")
+-- MAGIC # display(short_transaction)
 -- MAGIC # i then inner join the two tables on block hash 
--- MAGIC q13_full = short_block.join(short_transaction,short_transaction.block_hash ==  short_block.hash_block,"inner")
+-- MAGIC # q13_full = short_block.join(short_transaction,short_transaction.block_hash ==  short_block.hash_block,"inner")
 
 -- COMMAND ----------
 
 -- MAGIC %python
 -- MAGIC # I group by the timestamp and count the transactions. this will give the total number of 
 -- MAGIC # transaction on a given day, store the new dataframe as q13_table 
--- MAGIC q13_table = q13_full.groupBy("timestamp").count()
+-- MAGIC # q13_table = q13_full.groupBy("timestamp").count()
 
 -- COMMAND ----------
 
@@ -353,7 +351,10 @@ show tables;
 -- MAGIC from pyspark.sql.functions import col
 -- MAGIC # I then sorted the table in ascending order which put earlier dates in the front. 
 -- MAGIC # then I displayed it as barplot. 
--- MAGIC q13_table = q13_table.sort(col("timestamp"))
+-- MAGIC blocks = spark.sql("select * from ethereumetl.blocks where timestamp>1525656044")
+-- MAGIC blocks_clean = blocks.withColumn('timestamp_unix',from_unixtime(col("timestamp"),"MM-dd-yyyy"))
+-- MAGIC blocks_clean = blocks_clean.groupBy('timestamp_unix').sum("transaction_count")
+-- MAGIC q13_table = blocks_clean.sort(col("timestamp_unix"))
 
 -- COMMAND ----------
 
@@ -376,7 +377,13 @@ show tables;
 -- MAGIC 
 -- MAGIC transfer_df = spark.sql("select transaction_hash from ethereumetl.token_transfers")
 -- MAGIC transaction_df = spark.sql("select hash,block_hash from ethereumetl.transactions")
--- MAGIC short_block = spark.sql("select hash as hash_block,timestamp from g08_db.blocks_ts_clean ")
+-- MAGIC short_block = spark.sql("select hash as hash_block,timestamp,transaction_count from ethereumetl.blocks")
+-- MAGIC 
+-- MAGIC transaction_date = transaction_df.join(short_block, transaction_df.block_hash==short_block.hash_block, "inner").drop("hash_block")
+-- MAGIC transaction_date_transfer = transaction_date.join(transfer_df, transaction_date.hash==transfer_df.transaction_hash, "inner").drop("hash")
+-- MAGIC transaction_date_transfer = transaction_date_transfer.withColumn('timestamp_unix',from_unixtime(col("timestamp"),"MM-dd-yyyy"))
+-- MAGIC transaction_date_transfer = transaction_date_transfer.groupBy('timestamp_unix').sum("transaction_count")
+-- MAGIC q14_table = transaction_date_transfer.sort(col("timestamp_unix"))
 
 -- COMMAND ----------
 
@@ -399,7 +406,6 @@ show tables;
 
 -- MAGIC %python
 -- MAGIC #you then display it
--- MAGIC q14_table = spark.sql("select * from g08_db.q14_table")
 -- MAGIC display(q14_table)
 
 -- COMMAND ----------
