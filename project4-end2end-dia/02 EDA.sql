@@ -30,7 +30,6 @@
 -- MAGIC # spark.conf.set('wallet.address',wallet_address)
 -- MAGIC # spark.conf.set('start.date',start_date)
 
-
 -- COMMAND ----------
 
 use ethereumetl;

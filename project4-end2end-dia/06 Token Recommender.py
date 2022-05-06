@@ -17,8 +17,8 @@
 # COMMAND ----------
 
 # Grab the global variables
-# wallet_address,start_date = Utils.create_widgets()
-# print(wallet_address,start_date)
+wallet_address,start_date, fractional = Utils.create_widgets()
+print(wallet_address,start_date, fractional)
 
 # COMMAND ----------
 
@@ -28,7 +28,7 @@
 # COMMAND ----------
 
 # MAGIC %python
-# MAGIC model_name = "G08_db"
+# MAGIC model_name = "G08_model"
 # MAGIC from typing import List, Tuple
 # MAGIC def generateAppOutput(recommendations: List[Tuple[str, str, str, str]], wallet_address: str):
 # MAGIC     header =f"""

@@ -47,7 +47,7 @@ import time
 
 client = MlflowClient()
 
-model_name = "G08_db"
+model_name = "G08_model"
 
 latest_staging_version = None
 latest_production_version = None

@@ -57,7 +57,7 @@ class Utils:
         dbutils.widgets.removeAll()
         dbutils.widgets.text('00.Wallet_Address', "0xf02d7ee27ff9b2279e76a60978bf8cca9b18a3ff")
         dbutils.widgets.text('01.Start_Date', "2022-01-01")
-        dbutils.widgets.text('02.Fraction_Of_Data_Used_For_Model', 0.1) # default is 10% of total data
+        dbutils.widgets.text('02.Fraction_Of_Data_Used_For_Model', "0.1") # default is 10% of total data
         wallet_address = str(dbutils.widgets.get('00.Wallet_Address'))
         start_date = str(dbutils.widgets.get('01.Start_Date'))
         fractional = float(dbutils.widgets.get('02.Fraction_Of_Data_Used_For_Model'))
