@@ -22,17 +22,6 @@ print(wallet_address,start_date)
 
 # COMMAND ----------
 
-# MAGIC %python
-# MAGIC #Mock Data --> Replace with real data
-# MAGIC data = [
-# MAGIC     ("https://assets.coingecko.com/coins/images/18581/thumb/soul.jpg?1632491969", "AppCoins","(APPC)", "0x1a7a8bd9106f2b8d977e08582dc7d24c723ab0db"),
-# MAGIC     ("https://assets.coingecko.com/coins/images/18581/thumb/soul.jpg?1632491969", "AppCoins","(APPC)", "0x1a7a8bd9106f2b8d977e08582dc7d24c723ab0db"),
-# MAGIC     ("https://assets.coingecko.com/coins/images/18581/thumb/soul.jpg?1632491969", "AppCoins","(APPC)", "0x1a7a8bd9106f2b8d977e08582dc7d24c723ab0db"),
-# MAGIC 
-# MAGIC ]
-
-# COMMAND ----------
-
 # MAGIC %md
 # MAGIC ## Your code starts here...
 
@@ -75,30 +64,6 @@ print(wallet_address,start_date)
 
 # COMMAND ----------
 
-generateAppOutput(data, wallet_address)
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC select * from ethereumetl.token_prices_usd
-
-# COMMAND ----------
-
-not_cold_start_df = spark.sql("select * from g08_db.notcoldstart")
-display(not_cold_start_df)
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC select * from g08_db.test_data
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC select * from g08_db.popular_tokens
-
-# COMMAND ----------
-
 def recommend(wallet_address: str)->DataFrame:
     # generate a dataframe of songs that the user has previously listened to
     from pyspark.sql import functions as F
@@ -110,43 +75,40 @@ def recommend(wallet_address: str)->DataFrame:
     not_cold_start = wallet_df.count() > 1
     if not_cold_start:
         tokens_transacted = wallet_df.join(metadata_df, wallet_df.token_address == metadata_df.contract_address, "inner").select('image', 'name', 'symbol', 'contract_address')
-#         print(tokens_transacted.count())
-        tokens_unused = not_cold_start_df.filter(~not_cold_start_df["token_address"].isin([row["contract_address"] for row in tokens_transacted.collect()])).select('new_token_id').withColumn('new_wallet_id', F.lit(wallet_df.first().new_wallet_id)).distinct()
-        display(tokens_unused)
-#         display(tokens_transacted)
-#         print(tokens_unused.count())
-        # feed unlistened songs into model for a predicted Play count
+        tokens_unused = not_cold_start_df.filter(~not_cold_start_df["token_address"].isin([row["contract_address"] for row in tokens_transacted.collect()])).select('wallet_address','token_address','count','new_wallet_id','new_token_id')
+    #.withColumn('new_wallet_id', F.lit(wallet_df.first().new_wallet_id)).distinct()
         model = mlflow.spark.load_model('models:/test2/Production')
         predicted_tokens = model.transform(tokens_unused)
-        display(predicted_tokens)
-        
-        return predicted_tokens
+        results = predicted_tokens.join(metadata_df, predicted_tokens.token_address == metadata_df.contract_address, 'inner').select('image', 'name', 'symbol', 'contract_address', 'prediction').distinct().dropDuplicates(["symbol"]).orderBy('prediction', ascending = False)
+        top_5_results = results.take(5)
+        return top_5_results
     else: # Handle for cold start
-        print("cold start")
-        pass
-
-    #     return (tokens_transacted.select('image', 'name', 'symbol', 'contract_address'), predicted_listens.join(not_cold_start_df, 'new_songId') \
-    #                      .join(self.metadata_df, 'songId') \
-    #                      .select('artist_name', 'title', 'prediction') \
-    #                      .distinct() \
-    #                      .orderBy('prediction', ascending = False)) 
-        return None
-
-# COMMAND ----------
-
-results = recommend("0x05b1984c74c531eb52ea749ca2d5c51d9f058ff6")
-
-# COMMAND ----------
-
-display(results[0])
+        pop_tokens = spark.sql("select * from g08_db.popular_token")
+        pop_tokens = pop_tokens.select('image', 'name','symbol','token_address')
+        
+        return pop_tokens.take(5)
 
 # COMMAND ----------
 
 def runTokenRecommender(wallet_address: str):
     #TODO: check if cold start or not
-    ownedTokens = spark.sql
-    recommendations = getRecommendations(wallet_address)
+    results = recommend(wallet_address)
+    if len(results) < 5:
+        print("No recommendations generated!")
+        return
+    recommendations = []
+    for result in results:
+        image, name, symbol, address = result[0], result[1], result[2].upper(), result[3]
+#         print(result[4])
+        recommendations.append((image, name, symbol, address))
     generateAppOutput(recommendations, wallet_address)
+    
+    return results
+    
+
+# COMMAND ----------
+
+results = runTokenRecommender(wallet_address)
 
 # COMMAND ----------
 
