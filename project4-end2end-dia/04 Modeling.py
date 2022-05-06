@@ -29,18 +29,6 @@ print(wallet_address,start_date, fractional)
 
 # COMMAND ----------
 
-# notColdStart = token_transact_count_in_wallet_with_IDs.select("*").where(col('count') > 1)
-
-# COMMAND ----------
-
-#notColdStart.write.format('delta').saveAsTable('g08_db.notColdStart')
-
-# COMMAND ----------
-
-# ColdStart = token_transact_count_in_wallet_with_IDs.select("*").where(col('count') == 1)
-
-# COMMAND ----------
-
 display(dbutils.fs.ls(BASE_DELTA_PATH))
 
 # COMMAND ----------
@@ -184,6 +172,10 @@ class token_recommender():
         )
 
 
+
+# COMMAND ----------
+
+tr = token_recommender(dataPath, "G08_model", fractional)
 
 # COMMAND ----------
 
