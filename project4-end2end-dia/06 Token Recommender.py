@@ -28,6 +28,7 @@ print(wallet_address,start_date)
 # COMMAND ----------
 
 # MAGIC %python
+# MAGIC model_name = "G08_db"
 # MAGIC from typing import List, Tuple
 # MAGIC def generateAppOutput(recommendations: List[Tuple[str, str, str, str]], wallet_address: str):
 # MAGIC     header =f"""
@@ -77,7 +78,7 @@ def recommend(wallet_address: str)->DataFrame:
         tokens_transacted = wallet_df.join(metadata_df, wallet_df.token_address == metadata_df.contract_address, "inner").select('image', 'name', 'symbol', 'contract_address')
         tokens_unused = not_cold_start_df.filter(~not_cold_start_df["token_address"].isin([row["contract_address"] for row in tokens_transacted.collect()])).select('wallet_address','token_address','count','new_wallet_id','new_token_id')
     #.withColumn('new_wallet_id', F.lit(wallet_df.first().new_wallet_id)).distinct()
-        model = mlflow.spark.load_model('models:/test2/Production')
+        model = mlflow.spark.load_model(f'models:/{model_name}/Production')
         predicted_tokens = model.transform(tokens_unused)
         results = predicted_tokens.join(metadata_df, predicted_tokens.token_address == metadata_df.contract_address, 'inner').select('image', 'name', 'symbol', 'contract_address', 'prediction').distinct().dropDuplicates(["symbol"]).orderBy('prediction', ascending = False)
         top_5_results = results.take(5)

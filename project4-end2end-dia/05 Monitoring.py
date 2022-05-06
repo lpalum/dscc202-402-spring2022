@@ -47,7 +47,7 @@ import time
 
 client = MlflowClient()
 
-model_name = "test2"
+model_name = "G08_db"
 
 latest_staging_version = None
 latest_production_version = None
@@ -62,7 +62,7 @@ if latest_staging_version is None:
     print("No model in staging, exiting....")
 else:    
     
-    model_version_details = client.get_model_version(name="test2", version=latest_staging_version) #TODO how to get the latest version?
+    model_version_details = client.get_model_version(name=model_name, version=latest_staging_version)
 
     while model_version_details.status != "READY":
         time.sleep(20)
