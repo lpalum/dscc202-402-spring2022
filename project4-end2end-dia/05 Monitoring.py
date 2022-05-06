@@ -25,39 +25,90 @@ print(wallet_address,start_date)
 
 # COMMAND ----------
 
-# In ML Pipelines, this next step has a bug that produces unwanted NaN values. We
-# have to filter them out. See https://issues.apache.org/jira/browse/SPARK-14489
+def shouldWePromote(staging_model, production_model, test_data_df)->bool:
+    from pyspark.ml.evaluation import RegressionEvaluator
+    test_predictions = staging_model.transform(test_data_df)
+    reg_eval = RegressionEvaluator(predictionCol="prediction", labelCol="count", metricName="rmse")
+    stg_RMSE = reg_eval.evaluate(test_predictions)
+    
+    test_predictions = production_model.transform(test_data_df)
+    reg_eval = RegressionEvaluator(predictionCol="prediction", labelCol="count", metricName="rmse")
+    prod_RMSE = reg_eval.evaluate(test_predictions)
+    
+    print(f"staging error: {stg_RMSE}, production error: {prod_RMSE}")
+    return stg_RMSE < prod_RMSE
 
-test_df = test_df.withColumn("Plays", test_df["Plays"].cast(DoubleType()))
-predict_df = my_model.transform(test_df)
 
-# Remove NaN values from prediction (due to SPARK-14489)
-predicted_test_df = predict_df.filter(predict_df.prediction != float('nan'))
-
-# Round floats to whole numbers
-predicted_test_df = predicted_test_df.withColumn("prediction", F.abs(F.round(predicted_test_df["prediction"],0)))
-# Run the previously created RMSE evaluator, reg_eval, on the predicted_test_df DataFrame
-test_RMSE = reg_eval.evaluate(predicted_test_df)
-
-print('The model had a RMSE on the test set of {0}'.format(test_RMSE))
 
 # COMMAND ----------
 
-avg_plays_df = training_df.groupBy().avg('Plays').select(F.round('avg(Plays)'))
+from mlflow.tracking.client import MlflowClient
+import time
 
-avg_plays_df.show(3)
-# Extract the average rating value. (This is row 0, column 0.)
-training_avg_plays = avg_plays_df.collect()[0][0]
+client = MlflowClient()
 
-print('The average number of plays in the dataset is {0}'.format(training_avg_plays))
+model_name = "test2"
 
-# Add a column with the average rating
-test_for_avg_df = test_df.withColumn('prediction', F.lit(training_avg_plays))
+latest_staging_version = None
+latest_production_version = None
+for mv in client.search_model_versions(f"name='{model_name}'"):
+    if dict(mv)['current_stage'] == 'Staging':
+        latest_staging_version = dict(mv)['version']
+    elif dict(mv)['current_stage'] == 'Production':
+        latest_production_version = dict(mv)['version']
 
-# Run the previously created RMSE evaluator, reg_eval, on the test_for_avg_df DataFrame
-test_avg_RMSE = reg_eval.evaluate(test_for_avg_df)
 
-print("The RMSE on the average set is {0}".format(test_avg_RMSE))
+if latest_staging_version is None:
+    print("No model in staging, exiting....")
+else:    
+    
+    model_version_details = client.get_model_version(name="test2", version=latest_staging_version) #TODO how to get the latest version?
+
+    while model_version_details.status != "READY":
+        time.sleep(20)
+
+    if latest_production_version is not None:
+        test_df = spark.sql("select * from g08_db.test_data")
+        import mlflow.pyfunc
+
+        stg_uri = "models:/{model_name}/{ver}".format(model_name=model_name, ver=latest_staging_version)
+        prod_uri = "models:/{model_name}/{ver}".format(model_name=model_name, ver=latest_production_version)
+        staging = mlflow.spark.load_model(stg_uri)
+        production = mlflow.spark.load_model(prod_uri)
+        if shouldWePromote(staging, production, test_df):
+            print("Promoting Staging to Production")
+            client.transition_model_version_stage(
+              name=model_name,
+              version=latest_staging_version,
+              stage='Production',
+            )
+
+        else:
+            print("Current model in production performs better, no change")
+#             return
+
+    else:
+        print("No model in production, promoting...")
+        model_version_details = client.get_model_version(name=model_name, version=latest_staging_version)
+        client.transition_model_version_stage(
+          name=model_version_details.name,
+          version=model_version_details.version,
+          stage='Production',
+        )
+
+    timeout_counter = 10
+    model_version_details = client.get_model_version(name=model_name, version=latest_staging_version)
+
+    while model_version_details.current_stage != "Production" and timeout_counter > 0:
+        timeout_counter-=1
+        time.sleep(20)
+
+    if latest_production_version is not None:
+        client.transition_model_version_stage(
+          name=model_name,
+          version=latest_production_version,
+          stage="Archived",
+        )
 
 # COMMAND ----------
 
