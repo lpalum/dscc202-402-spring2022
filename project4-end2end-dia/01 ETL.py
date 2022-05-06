@@ -43,9 +43,9 @@ spark.conf.set('start.date',start_date)
 
 #utility functions
 def clear_prev_folders():
-    dbutils.fs.rm(BASE_DELTA_PATH+"/silver/",True) 
+    dbutils.fs.rm(BASE_DELTA_PATH+"silver/",True) 
     
-    dbutils.fs.mkdirs(BASE_DELTA_PATH+"/silver/")
+    dbutils.fs.mkdirs(BASE_DELTA_PATH+"silver/")
     print("successfully deleted the folders")
     
 
@@ -59,7 +59,7 @@ clear_prev_folders()
 
 #giving each path a unique name
 
-silver_path = BASE_DELTA_PATH+"/silver/"
+silver_path = BASE_DELTA_PATH+"silver/"
 from pyspark.sql.functions import *
 from pyspark.sql import functions as f
 from pyspark.sql import types as t
@@ -140,18 +140,95 @@ unique_token = bronze_df_plus.select("token_address").distinct().withColumn('new
 
 # COMMAND ----------
 
+# MAGIC %md ## silver_df is the triplet, with 90 million data
+
+# COMMAND ----------
+
 silver_df_inter = bronze_df_plus.join(unique_wallet, bronze_df_plus.wallet_address == unique_wallet.w_address,"inner").drop("w_address")
 silver_df = silver_df_inter.join(unique_token, bronze_df_plus.token_address == unique_token.t_address,"inner").drop("t_address")
 silver_df = silver_df.withColumn("count", silver_df["count"].cast(IntegerType()))
 
 # COMMAND ----------
 
-spark.sql("drop table if exists g08_db.silver_table")
-silver_df.write.format("delta").saveAsTable("g08_db.silver_table")
+display(silver_df.limit(3))
 
 # COMMAND ----------
 
-silver_df.write.format('delat').option("mergeSchema", "true").save(silver_path)
+spark.conf.set("spark.sql.shuffle.partitions", "20")
+
+# COMMAND ----------
+
+spark.conf.get("spark.sql.shuffle.partitions")
+
+# COMMAND ----------
+
+silver_df = silver_df.repartition(8)
+
+# COMMAND ----------
+
+# MAGIC %md ## Saving table where transaction count = 1
+# MAGIC 
+# MAGIC About 71% of the total data, 52 million
+
+# COMMAND ----------
+
+from pyspark.sql.functions import col
+silver_count_one = silver_df.filter(col('count') < 2)
+
+# COMMAND ----------
+
+spark.sql("drop table if exists g08_db.silver_count_one")
+silver_count_one.write.format("delta").saveAsTable("g08_db.silver_count_one")
+
+# COMMAND ----------
+
+silver_count_one_path = BASE_DELTA_PATH+"silver_count_one/"
+
+# COMMAND ----------
+
+silver_count_one.write.format('delat').option("mergeSchema", "true").save(silver_count_one_path)
+
+# COMMAND ----------
+
+# MAGIC %md ## Saving top 10 most transact tokens for cold start
+
+# COMMAND ----------
+
+silver_top_10 = silver_df.sort(col('count').desc())
+
+# COMMAND ----------
+
+spark.sql("drop table if exists g08_db.silver_top_10")
+silver_top_10.write.format("delta").saveAsTable("g08_db.silver_top_10")
+
+# COMMAND ----------
+
+silver_top_10_path = BASE_DELTA_PATH+"silver_top_10/"
+
+# COMMAND ----------
+
+silver_top_10.write.format('delat').option("mergeSchema", "true").save(silver_top_10_path)
+
+# COMMAND ----------
+
+# MAGIC %md ##Saving table where transaction count > 1
+
+# COMMAND ----------
+
+silver_modeling = silver_df.filter(col('count') > 1)
+
+# COMMAND ----------
+
+spark.sql("drop table if exists g08_db.silver_modeling")
+silver_modeling.write.format("delta").saveAsTable("g08_db.silver_modeling")
+
+# COMMAND ----------
+
+silver_modeling_path = BASE_DELTA_PATH+"silver_modeling/"
+
+# COMMAND ----------
+
+silver_modeling.write.format('delat').option("mergeSchema", "true").save(silver_modeling_path)
 
 # COMMAND ----------
 
@@ -169,7 +246,7 @@ display(spark.sql("OPTIMIZE delta_silver ZORDER BY (count)"))
 # COMMAND ----------
 
 silver_df = spark.read.format('delta').load(silver_path)
-display(bronze_df)
+#display(bronze_df)
 
 # COMMAND ----------
 
