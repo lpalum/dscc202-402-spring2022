@@ -27,90 +27,88 @@
 
 # COMMAND ----------
 
-# MAGIC %md ## Basic recommendation (cold start)
+# MAGIC %python
+# MAGIC from typing import List, Tuple
+# MAGIC def generateAppOutput(recommendations: List[Tuple[str, str, str, str]], wallet_address: str):
+# MAGIC     header =f"""
+# MAGIC     <h3>Recommend Tokens for user address:</h3>
+# MAGIC     {wallet_address}
+# MAGIC     """
+# MAGIC     rows = ""
+# MAGIC     for d in recommendations:
+# MAGIC         icon, name, symbol, address = d
+# MAGIC #         print(f"https://etherscan.io/token/{address}")
+# MAGIC         rows += f"""
+# MAGIC         <tr>
+# MAGIC         <td style="text-align:center"><img src="{icon}" alt="{name}"></td>
+# MAGIC         <td style="text-align:center">{name} ({symbol})</td>
+# MAGIC         <td style="text-align:center"><a href="https://etherscan.io/token/{address}">Etherscan Link</a></td>
+# MAGIC         </tr>
+# MAGIC         """
+# MAGIC 
+# MAGIC     table = f"""
+# MAGIC     <table padding="15px">
+# MAGIC     {rows}
+# MAGIC     </table>
+# MAGIC     """
+# MAGIC 
+# MAGIC     result = f"""
+# MAGIC 
+# MAGIC     <h2>Recommend Tokens for user address:</h2>
+# MAGIC     {wallet_address}
+# MAGIC     <br>
+# MAGIC     <br>
+# MAGIC     """
+# MAGIC     
+# MAGIC     displayHTML(result + table)
 
 # COMMAND ----------
 
-from pyspark.sql import DataFrame
-from pyspark.sql.types import *
-from pyspark.sql import functions as F
-from delta.tables import *
-import random
+def recommend(wallet_address: str)->DataFrame:
+    # generate a dataframe of songs that the user has previously listened to
+    from pyspark.sql import functions as F
 
-import mlflow
-import mlflow.spark
-from mlflow.tracking import MlflowClient
-from mlflow.models.signature import infer_signature
-from mlflow.models.signature import ModelSignature
-from mlflow.types.schema import Schema, ColSpec
-
-from pyspark.ml.recommendation import ALS
-from pyspark.ml.evaluation import RegressionEvaluator
-from pyspark.ml.tuning import CrossValidator, ParamGridBuilder
-song_ids_with_total_listens = raw_plays_df_with_int_ids.groupBy('songId') \
-                                                       .agg(F.count(raw_plays_df_with_int_ids.Plays).alias('User_Count'),
-                                                            F.sum(raw_plays_df_with_int_ids.Plays).alias('Total_Plays')) \
-                                                       .orderBy('Total_Plays', ascending = False)
-
-print('song_ids_with_total_listens:',
-song_ids_with_total_listens.show(3, truncate=False))
-
-# Join with metadata to get artist and song title
-song_names_with_plays_df = song_ids_with_total_listens.join(metadata_df, 'songId' ) \
-                                                      .filter('User_Count >= 2') \
-                                                      .select('artist_name', 'title', 'songId', 'User_Count','Total_Plays') \
-                                                      .orderBy('Total_Plays', ascending = False)
-
-print('song_names_with_plays_df:',
-song_names_with_plays_df.show(20, truncate = False))
+    not_cold_start_df = spark.sql("select * from g08_db.notcoldstart")
+    metadata_df = spark.sql("select name, symbol, image, contract_address  from ethereumetl.token_prices_usd")
+    wallet_df = not_cold_start_df.filter(not_cold_start_df.wallet_address == wallet_address)
+#     display(wallet_df)
+    not_cold_start = wallet_df.count() > 1
+    if not_cold_start:
+        tokens_transacted = wallet_df.join(metadata_df, wallet_df.token_address == metadata_df.contract_address, "inner").select('image', 'name', 'symbol', 'contract_address')
+        tokens_unused = not_cold_start_df.filter(~not_cold_start_df["token_address"].isin([row["contract_address"] for row in tokens_transacted.collect()])).select('wallet_address','token_address','count','new_wallet_id','new_token_id')
+    #.withColumn('new_wallet_id', F.lit(wallet_df.first().new_wallet_id)).distinct()
+        model = mlflow.spark.load_model('models:/test2/Production')
+        predicted_tokens = model.transform(tokens_unused)
+        results = predicted_tokens.join(metadata_df, predicted_tokens.token_address == metadata_df.contract_address, 'inner').select('image', 'name', 'symbol', 'contract_address', 'prediction').distinct().dropDuplicates(["symbol"]).orderBy('prediction', ascending = False)
+        top_5_results = results.take(5)
+        return top_5_results
+    else: # Handle for cold start
+        pop_tokens = spark.sql("select * from g08_db.popular_token")
+        pop_tokens = pop_tokens.select('image', 'name','symbol','token_address')
+        
+        return pop_tokens.take(5)
 
 # COMMAND ----------
 
-# MAGIC %md ##Recommendation based on model
+def runTokenRecommender(wallet_address: str):
+    #TODO: check if cold start or not
+    results = recommend(wallet_address)
+    if len(results) < 5:
+        print("No recommendations generated!")
+        return
+    recommendations = []
+    for result in results:
+        image, name, symbol, address = result[0], result[1], result[2].upper(), result[3]
+#         print(result[4])
+        recommendations.append((image, name, symbol, address))
+    generateAppOutput(recommendations, wallet_address)
+    
+    return results
+    
 
 # COMMAND ----------
 
-"""
-Method takes a specific userId and returns the songs that they have listened to
-and a set of recommendations in rank order that they may like based on their
-listening history.
-"""
-def recommend(self, userId: int)->(DataFrame,DataFrame):
-# generate a dataframe of songs that the user has previously listened to
-listened_songs = self.raw_plays_df_with_int_ids.filter(self.raw_plays_df_with_int_ids.new_userId == userId) \
-                                          .join(self.metadata_df, 'songId') \
-                                          .select('new_songId', 'artist_name', 'title','Plays') \
-
-# generate dataframe of unlistened songs
-unlistened_songs = self.raw_plays_df_with_int_ids.filter(~ self.raw_plays_df_with_int_ids['new_songId'].isin([song['new_songId'] for song in listened_songs.collect()])) \
-                                            .select('new_songId').withColumn('new_userId', F.lit(userId)).distinct()
-
-# feed unlistened songs into model for a predicted Play count
-model = mlflow.spark.load_model('models:/'+self.modelName+'/Staging')
-predicted_listens = model.transform(unlistened_songs)
-
-return (listened_songs.select('artist_name','title','Plays').orderBy('Plays', ascending = False), predicted_listens.join(self.raw_plays_df_with_int_ids, 'new_songId') \
-                 .join(self.metadata_df, 'songId') \
-                 .select('artist_name', 'title', 'prediction') \
-                 .distinct() \
-                 .orderBy('prediction', ascending = False)) 
-
- 
-
-"""
-Generate a data frame that recommends a number of songs for each of the users in the dataset (model)
-"""
-def recommendForUsers(self, numOfSongs: int) -> DataFrame:
-    model = mlflow.spark.load_model('models:/'+self.modelName+'/Staging')
-    return model.stages[0].recommendForAllUsers(numOfSongs)
-
-"""
-Generate a data frame that recommends a number of users for each of the songs in the dataset (model)
-"""
-  
-def recommendForSongs(self, numOfUsers: int) -> DataFrame:
-    model = mlflow.spark.load_model('models:/'+self.modelName+'/Staging')
-    return model.stages[0].recommendForAllItems(numOfUsers)
+results = runTokenRecommender(wallet_address)
 
 # COMMAND ----------
 
