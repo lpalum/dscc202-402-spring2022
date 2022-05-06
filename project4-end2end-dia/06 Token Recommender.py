@@ -52,7 +52,7 @@ print(wallet_address,start_date)
 # MAGIC         rows += f"""
 # MAGIC         <tr>
 # MAGIC         <td style="text-align:center"><img src="{icon}" alt="{name}"></td>
-# MAGIC         <td style="text-align:center">{name} {symbol}</td>
+# MAGIC         <td style="text-align:center">{name} ({symbol})</td>
 # MAGIC         <td style="text-align:center"><a href="https://etherscan.io/token/{address}">Etherscan Link</a></td>
 # MAGIC         </tr>
 # MAGIC         """
@@ -79,26 +79,66 @@ generateAppOutput(data, wallet_address)
 
 # COMMAND ----------
 
-  def recommend(self, wallet_address: int)->(DataFrame,DataFrame):
+# MAGIC %sql
+# MAGIC select * from ethereumetl.token_prices_usd
+
+# COMMAND ----------
+
+not_cold_start_df = spark.sql("select * from g08_db.notcoldstart")
+display(not_cold_start_df)
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC select * from g08_db.test_data
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC select * from g08_db.popular_tokens
+
+# COMMAND ----------
+
+def recommend(wallet_address: str)->DataFrame:
     # generate a dataframe of songs that the user has previously listened to
-    
-    listened_songs = self.raw_plays_df_with_int_ids.filter(self.raw_plays_df_with_int_ids.new_userId == userId) \
-                                              .join(self.metadata_df, 'songId') \
-                                              .select('new_songId', 'artist_name', 'title','Plays') \
+    from pyspark.sql import functions as F
 
-    # generate dataframe of unlistened songs
-    unlistened_songs = self.raw_plays_df_with_int_ids.filter(~ self.raw_plays_df_with_int_ids['new_songId'].isin([song['new_songId'] for song in listened_songs.collect()])) \
-                                                .select('new_songId').withColumn('new_userId', F.lit(userId)).distinct()
+    not_cold_start_df = spark.sql("select * from g08_db.notcoldstart")
+    metadata_df = spark.sql("select name, symbol, image, contract_address  from ethereumetl.token_prices_usd")
+    wallet_df = not_cold_start_df.filter(not_cold_start_df.wallet_address == wallet_address)
+#     display(wallet_df)
+    not_cold_start = wallet_df.count() > 1
+    if not_cold_start:
+        tokens_transacted = wallet_df.join(metadata_df, wallet_df.token_address == metadata_df.contract_address, "inner").select('image', 'name', 'symbol', 'contract_address')
+#         print(tokens_transacted.count())
+        tokens_unused = not_cold_start_df.filter(~not_cold_start_df["token_address"].isin([row["contract_address"] for row in tokens_transacted.collect()])).select('new_token_id').withColumn('new_wallet_id', F.lit(wallet_df.first().new_wallet_id)).distinct()
+        display(tokens_unused)
+#         display(tokens_transacted)
+#         print(tokens_unused.count())
+        # feed unlistened songs into model for a predicted Play count
+        model = mlflow.spark.load_model('models:/test2/Production')
+        predicted_tokens = model.transform(tokens_unused)
+        display(predicted_tokens)
+        
+        return predicted_tokens
+    else: # Handle for cold start
+        print("cold start")
+        pass
 
-    # feed unlistened songs into model for a predicted Play count
-    model = mlflow.spark.load_model('models:/'+self.modelName+'/Staging')
-    predicted_listens = model.transform(unlistened_songs)
+    #     return (tokens_transacted.select('image', 'name', 'symbol', 'contract_address'), predicted_listens.join(not_cold_start_df, 'new_songId') \
+    #                      .join(self.metadata_df, 'songId') \
+    #                      .select('artist_name', 'title', 'prediction') \
+    #                      .distinct() \
+    #                      .orderBy('prediction', ascending = False)) 
+        return None
 
-    return (listened_songs.select('artist_name','title','Plays').orderBy('Plays', ascending = False), predicted_listens.join(self.raw_plays_df_with_int_ids, 'new_songId') \
-                     .join(self.metadata_df, 'songId') \
-                     .select('artist_name', 'title', 'prediction') \
-                     .distinct() \
-                     .orderBy('prediction', ascending = False)) 
+# COMMAND ----------
+
+results = recommend("0x05b1984c74c531eb52ea749ca2d5c51d9f058ff6")
+
+# COMMAND ----------
+
+display(results[0])
 
 # COMMAND ----------
 
