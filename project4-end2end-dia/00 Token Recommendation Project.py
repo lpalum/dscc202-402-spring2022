@@ -169,3 +169,7 @@ result_dash = dbutils.notebook.run("06 Token Recommender", 0, {"00.Wallet_Addres
 # Check for success
 assert json.loads(result_dash)["exit_code"] == "OK", "Token Recommendation Application Failed!" # Check to see that it worked
 
+
+# COMMAND ----------
+
+

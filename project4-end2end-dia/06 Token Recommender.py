@@ -53,7 +53,7 @@ print(wallet_address,start_date)
 # MAGIC         <tr>
 # MAGIC         <td style="text-align:center"><img src="{icon}" alt="{name}"></td>
 # MAGIC         <td style="text-align:center">{name} {symbol}</td>
-# MAGIC         <td style="text-align:center"><a href="https://etherscan.io/token/{address}">Website</a></td>
+# MAGIC         <td style="text-align:center"><a href="https://etherscan.io/token/{address}">Etherscan Link</a></td>
 # MAGIC         </tr>
 # MAGIC         """
 # MAGIC 
@@ -79,9 +79,9 @@ generateAppOutput(data, wallet_address)
 
 # COMMAND ----------
 
-def runTokenRecommender(wallet_address: str):
-    recommendations = getRecommendations(wallet_address)
-    generateAppOutput(recommendations, wallet_address)
+# def runTokenRecommender(wallet_address: str):
+#     recommendations = getRecommendations(wallet_address)
+#     generateAppOutput(recommendations, wallet_address)
 
 # COMMAND ----------
 
