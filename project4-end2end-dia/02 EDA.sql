@@ -32,17 +32,104 @@
 
 -- COMMAND ----------
 
+-- MAGIC %python
+-- MAGIC transactions = spark.sql("select * from ethereumetl.transactions")
+-- MAGIC transactions.count()
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC blocks = spark.sql("select * from ethereumetl.blocks")
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC blocks.count()
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC display(blocks)
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC 
+-- MAGIC display(blocks.sort(col('number').desc()))
+
+-- COMMAND ----------
+
 -- MAGIC %md
 -- MAGIC ## Q1: What is the maximum block number and date of block in the database
 
 -- COMMAND ----------
 
--- TBD
+-- MAGIC %md
+-- MAGIC maximum block number: 14044000
+-- MAGIC 
+-- MAGIC data of block: 2022-01-20 
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC from pyspark.sql.functions import *
+-- MAGIC from pyspark.sql import functions as f
+-- MAGIC from pyspark.sql import types as t
+-- MAGIC from pyspark.sql.functions import *
+-- MAGIC from pyspark.sql.functions import to_date
+-- MAGIC # token_prices_usd = spark.sql("select * from ethereumetl.token_prices_usd")
+-- MAGIC cols_drop = ['nonce', 'parent_hash', 'sha3_uncles', 'logs_bloom', 'transactions_root', 'state_root', 'receipts_root', 'miner', 'difficulty', 'total_difficulty', 'extra_data', 'size', 'gas_limit', 'base_fee_per_gas']
+-- MAGIC blocks_clean = blocks.drop(*cols_drop)
+-- MAGIC # blocks_ts_clean = blocks_clean.select(
+-- MAGIC #     from_unixtime(col("timestamp")).alias("timestamp1")
+-- MAGIC # )
+-- MAGIC blocks_clean = blocks_clean.withColumn('timestamp', f.date_format(blocks_clean.timestamp.cast(dataType=t.TimestampType()), "yyyy-MM-dd"))
+-- MAGIC blocks_ts_clean = blocks_clean.withColumn('timestamp', f.to_date(blocks_clean.timestamp.cast(dataType=t.TimestampType())))
+-- MAGIC 
+-- MAGIC display(blocks_ts_clean)
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC blocks_ts_clean = blocks_ts_clean.distinct()
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC blocks_ts_clean.distinct().count()
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC display(blocks_ts_clean.sort(col('timestamp').desc()))
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC blocks_ts_clean.createOrReplaceTempView("blocks_ts_clean")
+
+-- COMMAND ----------
+
+CREATE TABLE IF NOT EXISTS g08_db.blocks_ts_clean AS 
+SELECT * FROM blocks_ts_clean
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC blocks_ts_clean.select("*").filter("timestamp between '2018-01-01' AND '2018-12-12'").show()
 
 -- COMMAND ----------
 
 -- MAGIC %md
 -- MAGIC ## Q2: At what block did the first ERC20 transfer happen?
+
+-- COMMAND ----------
+
+SELECT g08_db.blocks_ts_clean.start_block, g08_db.blocks_ts_clean.timestamp
+FROM g08_db.blocks_ts_clean
+INNER JOIN ethereumetl.tokens
+ON g08_db.blocks_ts_clean.start_block = ethereumetl.tokens.start_block
+ORDER BY timestamp ASC
 
 -- COMMAND ----------
 
@@ -52,10 +139,20 @@
 
 -- MAGIC %md
 -- MAGIC ## Q3: How many ERC20 compatible contracts are there on the blockchain?
+-- MAGIC 
+-- MAGIC 181937
 
 -- COMMAND ----------
 
--- TBD
+-- MAGIC %python
+-- MAGIC silver_contracts = spark.sql("select * from g08_db.silver_erc20_contracts where is_erc20 = True" )
+-- MAGIC silver_contracts.dropDuplicates()
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC 
+-- MAGIC print(silver_contracts.count())
 
 -- COMMAND ----------
 
@@ -160,6 +257,16 @@
 -- COMMAND ----------
 
 -- TBD
+
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC ERC20_transact = spark.sql("select * from ethereumetl.token_transfers").distinct()
+-- MAGIC ERC20_transact.count()
+
+-- COMMAND ----------
+
 
 
 -- COMMAND ----------
