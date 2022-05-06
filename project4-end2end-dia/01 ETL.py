@@ -41,7 +41,161 @@ spark.conf.set('start.date',start_date)
 
 # COMMAND ----------
 
+#utility functions
+def clear_prev_folders():
+    dbutils.fs.rm(BASE_DELTA_PATH+"/bronze/",True)
+    dbutils.fs.rm(BASE_DELTA_PATH+"/silver/",True) 
+ 
+    dbutils.fs.mkdirs(BASE_DELTA_PATH+"/bronze/")
+    dbutils.fs.mkdirs(BASE_DELTA_PATH+"/silver/")
+    print("successfully deleted the folders")
+    
 
+# COMMAND ----------
+
+
+
+# COMMAND ----------
+
+#DO NOT run this if you don't want to things start over
+#make sure we delete all the previous folders before each run
+clear_prev_folders()
+
+# COMMAND ----------
+
+#giving each path a unique name
+
+bronze_path = BASE_DELTA_PATH+"bronze/"
+silver_path = BASE_DELTA_PATH+"silver/"
+from pyspark.sql.functions import *
+from pyspark.sql import functions as f
+from pyspark.sql import types as t
+
+#asserting the path 
+
+print(silver_path)
+
+
+# COMMAND ----------
+
+# MAGIC %md ## Table: ERC20_token_table
+# MAGIC Filtered from ethereumetl.token_prices_usd, all tokens in here are unique and ERC20
+
+# COMMAND ----------
+
+#start first by filtering out the unrelated token only take ERC20 tokens from token price usd 
+ERC20_token_table = spark.sql("select contract_address, name from ethereumetl.token_prices_usd where asset_platform_id== 'ethereum' ").distinct()
+
+# COMMAND ----------
+
+
+#we also want the token_transfer table because it has token information
+token_transfer_df = spark.sql("select token_address,transaction_hash,to_address from ethereumetl.token_transfers")
+
+# COMMAND ----------
+
+# MAGIC %md ##Table: ERC20_contract
+# MAGIC Unique ERC20 contracts, but include non-recommend-worthy tokens
+
+# COMMAND ----------
+
+## this table is used to filter out the token contract address from to address
+ERC20_contract = spark.sql("select address from ethereumetl.silver_contracts")
+
+# COMMAND ----------
+
+# MAGIC %md ## Table: bronze_init
+# MAGIC bronze_init: token_transfer inner join with ERC20_token_table
+# MAGIC 
+# MAGIC All tokens and transactions in this table are ERC20, and involves the 1149 tokens that we can recommend 
+# MAGIC 
+# MAGIC In total we have 900 million token transactions on chain, among them 537() millions transaction involves the 1149 tokens that we can recommend
+
+# COMMAND ----------
+
+bronze_init =token_transfer_df.join(ERC20_token_table, token_transfer_df.token_address== ERC20_token_table.contract_address, "inner").drop("contract_address").distinct()
+
+
+# COMMAND ----------
+
+# MAGIC %md ## Table: bronze_df_plus
+# MAGIC 
+# MAGIC bronze_df: left antijoin bronze_init_1 with ERC20_contract on to_address to filter out the contract address.
+# MAGIC 
+# MAGIC because we only care about user wallet address. then store in bronze path
+
+# COMMAND ----------
+
+# perform left antijoin to filter out the contract address. 
+bronze_df = bronze_init.join(ERC20_contract, bronze_init.to_address == ERC20_contract.address, "leftanti")
+
+# COMMAND ----------
+
+bronze_df_plus = bronze_df.groupBy("to_address","token_address").count().withColumnRenamed("to_address","wallet_address")
+
+# COMMAND ----------
+
+bronze_df_plus.write.format("delta").option("mergeSchema", "true").partitionBy("token_address").save(bronze_path)
+
+# COMMAND ----------
+
+display(spark.sql("DROP TABLE  IF EXISTS delta_bronze"))
+ 
+display(spark.sql("CREATE TABLE delta_bronze USING DELTA LOCATION '/mnt/dscc202-datasets/misc/G08/tokenrec/tables/bronze/'"))
+                  
+display(spark.sql("OPTIMIZE delta_bronze ZORDER BY (count)"))
+
+# COMMAND ----------
+
+triplet = spark.read.format("delta").load(bronze_path)
+display(triplet)
+
+# COMMAND ----------
+
+# MAGIC %md ## Table: Silver Table 
+# MAGIC bronze plus: encode the wallet address and token address
+
+# COMMAND ----------
+
+silver_table = triplet.filter(col('count')>1)
+display(silver_table)
+print(silver_table.count())
+
+# COMMAND ----------
+
+unique_wallet = silver_table.select("wallet_address").distinct().withColumn('new_wallet_id',monotonically_increasing_id().cast(IntegerType())).withColumnRenamed("wallet_address","w_address")
+
+unique_token = silver_table.select("token_address").distinct().withColumn('new_token_id',monotonically_increasing_id().cast(IntegerType())).withColumnRenamed("token_address","t_address")
+
+
+
+# COMMAND ----------
+
+silver_df_inter = silver_table.join(unique_wallet, silver_table.wallet_address == unique_wallet.w_address,"inner").drop("w_address")
+silver_df = silver_df_inter.join(unique_token, silver_df_inter .token_address == unique_token.t_address,"inner").drop("t_address")
+silver_df = silver_df.withColumn("count", silver_df["count"].cast(IntegerType()))
+
+# COMMAND ----------
+
+# spark.sql("drop table if exists g08_db.silver_table")
+# silver_df.write.format("delta").saveAsTable("g08_db.silver_table")
+
+# COMMAND ----------
+
+silver_df.write.format('delta').option("mergeSchema", "true").partitionBy("new_token_id").save(silver_path)
+
+# COMMAND ----------
+
+display(spark.sql("DROP TABLE  IF EXISTS delta_silver"))
+ 
+display(spark.sql("CREATE TABLE delta_silver USING DELTA LOCATION '/mnt/dscc202-datasets/misc/G08/tokenrec/tables/silver/'"))
+                  
+display(spark.sql("OPTIMIZE delta_silver ZORDER BY (token_address)"))
+
+# COMMAND ----------
+
+silver_df = spark.read.format('delta').load(silver_path)
+display(silver_df)
 
 # COMMAND ----------
 

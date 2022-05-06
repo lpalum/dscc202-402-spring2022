@@ -18,7 +18,7 @@ Enter any project wide configuration here...
 """
 
 # Some configuration of the cluster
-spark.conf.set("spark.sql.shuffle.partitions", "32")  # Configure the size of shuffles the same as core count on your cluster
+spark.conf.set("spark.sql.shuffle.partitions", "auto")  # Configure the size of shuffles the same as core count on your cluster
 spark.conf.set("spark.sql.adaptive.enabled", "true")  # Spark 3.0 AQE - coalescing post-shuffle partitions, converting sort-merge join to broadcast join, and skew join optimization
 spark.conf.set("spark.databricks.io.cache.enabled", "true") # set the delta file cache to true
 
