@@ -79,9 +79,34 @@ generateAppOutput(data, wallet_address)
 
 # COMMAND ----------
 
-# def runTokenRecommender(wallet_address: str):
-#     recommendations = getRecommendations(wallet_address)
-#     generateAppOutput(recommendations, wallet_address)
+  def recommend(self, wallet_address: int)->(DataFrame,DataFrame):
+    # generate a dataframe of songs that the user has previously listened to
+    
+    listened_songs = self.raw_plays_df_with_int_ids.filter(self.raw_plays_df_with_int_ids.new_userId == userId) \
+                                              .join(self.metadata_df, 'songId') \
+                                              .select('new_songId', 'artist_name', 'title','Plays') \
+
+    # generate dataframe of unlistened songs
+    unlistened_songs = self.raw_plays_df_with_int_ids.filter(~ self.raw_plays_df_with_int_ids['new_songId'].isin([song['new_songId'] for song in listened_songs.collect()])) \
+                                                .select('new_songId').withColumn('new_userId', F.lit(userId)).distinct()
+
+    # feed unlistened songs into model for a predicted Play count
+    model = mlflow.spark.load_model('models:/'+self.modelName+'/Staging')
+    predicted_listens = model.transform(unlistened_songs)
+
+    return (listened_songs.select('artist_name','title','Plays').orderBy('Plays', ascending = False), predicted_listens.join(self.raw_plays_df_with_int_ids, 'new_songId') \
+                     .join(self.metadata_df, 'songId') \
+                     .select('artist_name', 'title', 'prediction') \
+                     .distinct() \
+                     .orderBy('prediction', ascending = False)) 
+
+# COMMAND ----------
+
+def runTokenRecommender(wallet_address: str):
+    #TODO: check if cold start or not
+    ownedTokens = spark.sql
+    recommendations = getRecommendations(wallet_address)
+    generateAppOutput(recommendations, wallet_address)
 
 # COMMAND ----------
 
