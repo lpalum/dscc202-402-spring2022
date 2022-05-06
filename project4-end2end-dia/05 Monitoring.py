@@ -15,8 +15,8 @@
 # COMMAND ----------
 
 # Grab the global variables
-wallet_address,start_date = Utils.create_widgets()
-print(wallet_address,start_date)
+# wallet_address,start_date = Utils.create_widgets()
+# print(wallet_address,start_date)
 
 # COMMAND ----------
 

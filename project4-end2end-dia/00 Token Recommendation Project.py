@@ -80,9 +80,9 @@
 
 # COMMAND ----------
 
-wallet_address, start_date = Utils.create_widgets()
+wallet_address, start_date, fractional = Utils.create_widgets()
 
-print(wallet_address, start_date)
+print(wallet_address, start_date, fractional)
 
 # COMMAND ----------
 
