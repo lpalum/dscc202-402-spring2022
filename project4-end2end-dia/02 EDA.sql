@@ -23,39 +23,13 @@
 
 -- COMMAND ----------
 
--- MAGIC %python
--- MAGIC # Grab the global variables
--- MAGIC wallet_address,start_date = Utils.create_widgets()
--- MAGIC print(wallet_address,start_date)
--- MAGIC spark.conf.set('wallet.address',wallet_address)
--- MAGIC spark.conf.set('start.date',start_date)
+use ethereumetl;
+show tables;
 
 -- COMMAND ----------
 
--- MAGIC %python
--- MAGIC transactions = spark.sql("select * from ethereumetl.transactions")
--- MAGIC transactions.count()
-
--- COMMAND ----------
-
--- MAGIC %python
--- MAGIC blocks = spark.sql("select * from ethereumetl.blocks")
-
--- COMMAND ----------
-
--- MAGIC %python
--- MAGIC blocks.count()
-
--- COMMAND ----------
-
--- MAGIC %python
--- MAGIC display(blocks)
-
--- COMMAND ----------
-
--- MAGIC %python
--- MAGIC 
--- MAGIC display(blocks.sort(col('number').desc()))
+use ethereumetl;
+show tables;
 
 -- COMMAND ----------
 
@@ -64,72 +38,12 @@
 
 -- COMMAND ----------
 
--- MAGIC %md
--- MAGIC maximum block number: 14044000
--- MAGIC 
--- MAGIC data of block: 2022-01-20 
 
--- COMMAND ----------
-
--- MAGIC %python
--- MAGIC from pyspark.sql.functions import *
--- MAGIC from pyspark.sql import functions as f
--- MAGIC from pyspark.sql import types as t
--- MAGIC from pyspark.sql.functions import *
--- MAGIC from pyspark.sql.functions import to_date
--- MAGIC # token_prices_usd = spark.sql("select * from ethereumetl.token_prices_usd")
--- MAGIC cols_drop = ['nonce', 'parent_hash', 'sha3_uncles', 'logs_bloom', 'transactions_root', 'state_root', 'receipts_root', 'miner', 'difficulty', 'total_difficulty', 'extra_data', 'size', 'gas_limit', 'base_fee_per_gas']
--- MAGIC blocks_clean = blocks.drop(*cols_drop)
--- MAGIC # blocks_ts_clean = blocks_clean.select(
--- MAGIC #     from_unixtime(col("timestamp")).alias("timestamp1")
--- MAGIC # )
--- MAGIC blocks_clean = blocks_clean.withColumn('timestamp', f.date_format(blocks_clean.timestamp.cast(dataType=t.TimestampType()), "yyyy-MM-dd"))
--- MAGIC blocks_ts_clean = blocks_clean.withColumn('timestamp', f.to_date(blocks_clean.timestamp.cast(dataType=t.TimestampType())))
--- MAGIC 
--- MAGIC display(blocks_ts_clean)
-
--- COMMAND ----------
-
--- MAGIC %python
--- MAGIC blocks_ts_clean = blocks_ts_clean.distinct()
-
--- COMMAND ----------
-
--- MAGIC %python
--- MAGIC blocks_ts_clean.distinct().count()
-
--- COMMAND ----------
-
--- MAGIC %python
--- MAGIC display(blocks_ts_clean.sort(col('timestamp').desc()))
-
--- COMMAND ----------
-
--- MAGIC %python
--- MAGIC blocks_ts_clean.createOrReplaceTempView("blocks_ts_clean")
-
--- COMMAND ----------
-
-CREATE TABLE IF NOT EXISTS g08_db.blocks_ts_clean AS 
-SELECT * FROM blocks_ts_clean
-
--- COMMAND ----------
-
--- MAGIC %python
--- MAGIC blocks_ts_clean.select("*").filter("timestamp between '2018-01-01' AND '2018-12-12'").show()
 
 -- COMMAND ----------
 
 -- MAGIC %md
 -- MAGIC ## Q2: At what block did the first ERC20 transfer happen?
-
--- COMMAND ----------
-
-SELECT g08_db.blocks_ts_clean.start_block, g08_db.blocks_ts_clean.timestamp
-FROM g08_db.blocks_ts_clean
-INNER JOIN ethereumetl.tokens
-ON g08_db.blocks_ts_clean.start_block = ethereumetl.tokens.start_block
-ORDER BY timestamp ASC
 
 -- COMMAND ----------
 
@@ -139,20 +53,10 @@ ORDER BY timestamp ASC
 
 -- MAGIC %md
 -- MAGIC ## Q3: How many ERC20 compatible contracts are there on the blockchain?
--- MAGIC 
--- MAGIC 181937
 
 -- COMMAND ----------
 
--- MAGIC %python
--- MAGIC silver_contracts = spark.sql("select * from g08_db.silver_erc20_contracts where is_erc20 = True" )
--- MAGIC silver_contracts.dropDuplicates()
-
--- COMMAND ----------
-
--- MAGIC %python
--- MAGIC 
--- MAGIC print(silver_contracts.count())
+-- TBD
 
 -- COMMAND ----------
 
@@ -161,7 +65,35 @@ ORDER BY timestamp ASC
 
 -- COMMAND ----------
 
--- TBD
+-- MAGIC %python
+-- MAGIC contracts = spark.sql("select address from silver_contracts").distinct()
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC display(contracts)
+
+-- COMMAND ----------
+
+-- MAGIC %python 
+-- MAGIC transactions = spark.sql('select hash, to_address from transactions')
+-- MAGIC display(transactions)
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC trns_contrs_inner = transactions.join(contracts, transactions.to_address == contracts.address, "inner")
+
+-- COMMAND ----------
+
+-- MAGIC %python 
+-- MAGIC pct_call_to_contracts = 100*trns_contrs_inner.count()/transactions.count()
+-- MAGIC print(f"{pct_call_to_contracts}% transactions are calls to contracts")
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC # spark.sql.shuffle.partitions="auto"
 
 -- COMMAND ----------
 
@@ -170,7 +102,45 @@ ORDER BY timestamp ASC
 
 -- COMMAND ----------
 
--- TBD
+-- MAGIC %python
+-- MAGIC # token_transfers = spark.sql('select * from g08_db.silver_erc20_token_transfers')
+-- MAGIC token_transfers = spark.sql('select * from ethereumetl.token_transfers')
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC transfer_count = token_transfers.groupBy("token_address").count()
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC tokens = spark.sql('select * from tokens')
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC sorted_transfer_count = transfer_count.sort(col("count").desc())
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC sorted_transfer_count.show(5)
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC sorted_token_count = sorted_transfer_count.join(tokens, sorted_transfer_count.token_address == tokens.address, "inner").select("token_address", "symbol", "count").distinct()
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC sorted_token_count = sorted_token_count.sort(col("count").desc()).collect()
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC for row in sorted_token_count:
+-- MAGIC     print(row[1], row[2])
 
 -- COMMAND ----------
 
@@ -180,7 +150,27 @@ ORDER BY timestamp ASC
 
 -- COMMAND ----------
 
--- TBD
+-- MAGIC %python
+-- MAGIC token_transfers = spark.sql('select * from g08_db.silver_erc20_token_transfers')
+-- MAGIC token_transfers = token_transfers.filter(col("is_erc20")==True)
+-- MAGIC # display(token_transfers)
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC transfer_groupedBy_to_address = token_transfers.groupBy("to_address").count()
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC transfer_is_1 = transfer_groupedBy_to_address.filter("count = 1")
+-- MAGIC transfer_is_1_count = transfer_is_1.count()
+-- MAGIC print(f"{100*transfer_is_1_count/token_transfers.count()}%")
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC display(transfer_is_1)
 
 -- COMMAND ----------
 
@@ -190,7 +180,14 @@ ORDER BY timestamp ASC
 
 -- COMMAND ----------
 
--- TBD
+-- MAGIC %python
+-- MAGIC transaction = spark.sql("select * from ethereumetl.transactions")
+-- MAGIC display(transaction.filter("block_number == 13856856"))
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC It looks like the transaction is ordered by the gas_price in a descending ordering 
 
 -- COMMAND ----------
 
@@ -200,7 +197,22 @@ ORDER BY timestamp ASC
 
 -- COMMAND ----------
 
--- TBD
+-- MAGIC %python
+-- MAGIC transaction = spark.sql("select * from ethereumetl.transactions")
+-- MAGIC rate = transaction.groupBy("block_number").count()
+-- MAGIC display(rate)
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC from pyspark.sql.functions import  desc
+-- MAGIC rate = rate.sort(desc("count"))
+-- MAGIC display(rate)
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC since the highest transaction block has transaction 1415, then the highest transaction per second is 94.33  
 
 -- COMMAND ----------
 
@@ -210,7 +222,26 @@ ORDER BY timestamp ASC
 
 -- COMMAND ----------
 
--- TBD
+-- MAGIC %python
+-- MAGIC 
+-- MAGIC transaction = spark.sql("select * from ethereumetl.transactions")
+-- MAGIC display(transaction)
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC from pyspark.sql.functions import  sum
+-- MAGIC total_value = transaction.select(sum('value')/(10**18)).collect()
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC total_value[0]
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC the total Ether volume is 4819303728.848482
 
 -- COMMAND ----------
 
@@ -257,16 +288,6 @@ ORDER BY timestamp ASC
 -- COMMAND ----------
 
 -- TBD
-
-
--- COMMAND ----------
-
--- MAGIC %python
--- MAGIC ERC20_transact = spark.sql("select * from ethereumetl.token_transfers").distinct()
--- MAGIC ERC20_transact.count()
-
--- COMMAND ----------
-
 
 
 -- COMMAND ----------
