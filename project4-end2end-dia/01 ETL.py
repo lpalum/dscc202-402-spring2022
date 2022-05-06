@@ -53,6 +53,10 @@ def clear_prev_folders():
 
 # COMMAND ----------
 
+
+
+# COMMAND ----------
+
 #DO NOT run this if you don't want to things start over
 #make sure we delete all the previous folders before each run
 clear_prev_folders()

@@ -40,6 +40,32 @@ show tables;
 
 -- COMMAND ----------
 
+-- #EDA 1.1
+-- %python
+-- blocks = spark.sql("select * from ethereumetl.blocks")
+-- display(blocks.sort(col('number').desc()))
+
+-- #EDA 1.2
+-- %python
+-- from pyspark.sql.functions import *
+-- from pyspark.sql import functions as f
+-- from pyspark.sql import types as t
+-- from pyspark.sql.functions import *
+-- from pyspark.sql.functions import to_date
+-- # token_prices_usd = spark.sql("select * from ethereumetl.token_prices_usd")
+-- cols_drop = ['nonce', 'parent_hash', 'sha3_uncles', 'logs_bloom', 'transactions_root', 'state_root', 'receipts_root', 'miner', 'difficulty', 'total_difficulty', 'extra_data', 'size', 'gas_limit', 'base_fee_per_gas']
+-- blocks_clean = blocks.drop(*cols_drop)
+-- # blocks_ts_clean = blocks_clean.select(
+-- #     from_unixtime(col("timestamp")).alias("timestamp1")
+-- # )
+-- blocks_clean = blocks_clean.withColumn('timestamp', f.date_format(blocks_clean.timestamp.cast(dataType=t.TimestampType()), "yyyy-MM-dd"))
+-- blocks_ts_clean = blocks_clean.withColumn('timestamp', f.to_date(blocks_clean.timestamp.cast(dataType=t.TimestampType())))
+
+-- %python
+-- display(blocks_ts_clean.sort(col('timestamp').desc()))
+
+-- COMMAND ----------
+
 -- MAGIC %python
 -- MAGIC blocks_ts_clean = spark.sql("select * from g08_db.blocks_ts_clean")
 -- MAGIC display(blocks_ts_clean.sort(col('timestamp').desc()))
@@ -139,12 +165,35 @@ show tables;
 
 -- COMMAND ----------
 
+select count(distinct(*)) from ethereumetl.token_transfers
+
+-- COMMAND ----------
+
 -- MAGIC %python
--- MAGIC token_transfers = spark.sql('select * from ethereumetl.token_transfers')
--- MAGIC q6_table = token_transfers.groupBy("to_address").count()
--- MAGIC transfer_is_1 = q6_table.filter("count = 1")
--- MAGIC transfer_is_1_count = transfer_is_1.distinct().count()
--- MAGIC print(f"{100*transfer_is_1_count/token_transfers.distinct().count()}%")
+-- MAGIC token_original = spark.sql('select * from ethereumetl.token_transfers').dropDuplicates()
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC token_original.count()
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC # to address from token transfer 
+-- MAGIC 
+-- MAGIC token_transfers = spark.sql('select to_address from ethereumetl.token_transfers')
+-- MAGIC #total number of transaction to new address 
+-- MAGIC token_count = token_transfers.groupBy("to_address").count().filter(col('count')==1).count()
+-- MAGIC #total transaction 
+-- MAGIC total_transaction = token_transfers.count()
+-- MAGIC percentage = token_count/total_transaction 
+-- MAGIC print(percentage)
+-- MAGIC # print(f"{100*transfer_is_1_count/token_transfers.distinct().count()}%")
+
+-- COMMAND ----------
+
+token_transfers.count()
 
 -- COMMAND ----------
 
@@ -352,9 +401,14 @@ show tables;
 -- MAGIC # I then sorted the table in ascending order which put earlier dates in the front. 
 -- MAGIC # then I displayed it as barplot. 
 -- MAGIC blocks = spark.sql("select * from ethereumetl.blocks where timestamp>1525656044")
--- MAGIC blocks_clean = blocks.withColumn('timestamp_unix',from_unixtime(col("timestamp"),"MM-dd-yyyy"))
--- MAGIC blocks_clean = blocks_clean.groupBy('timestamp_unix').sum("transaction_count")
--- MAGIC q13_table = blocks_clean.sort(col("timestamp_unix"))
+-- MAGIC blocks_clean = blocks.withColumn('timestamp_convert', f.date_format(blocks.timestamp.cast(dataType=t.TimestampType()), "yyyy-MM-dd"))
+-- MAGIC blocks_clean.drop('timestamp')
+-- MAGIC blocks_clean = blocks_clean.groupBy('timestamp_convert').count()
+-- MAGIC q13_table = blocks_clean.sort(col("timestamp_convert").desc())
+-- MAGIC 
+-- MAGIC 
+-- MAGIC # blocks_clean = blocks_clean.withColumn('timestamp', f.date_format(blocks_clean.timestamp.cast(dataType=t.TimestampType()), "yyyy-MM-dd"))
+-- MAGIC # blocks_ts_clean = blocks_clean.withColumn('timestamp', f.to_date(blocks_clean.timestamp.cast(dataType=t.TimestampType())))
 
 -- COMMAND ----------
 
@@ -377,13 +431,13 @@ show tables;
 -- MAGIC 
 -- MAGIC transfer_df = spark.sql("select transaction_hash from ethereumetl.token_transfers")
 -- MAGIC transaction_df = spark.sql("select hash,block_hash from ethereumetl.transactions")
--- MAGIC short_block = spark.sql("select hash as hash_block,timestamp,transaction_count from ethereumetl.blocks")
+-- MAGIC short_block = spark.sql("select hash as hash_block,timestamp,transaction_count from ethereumetl.blocks where timestamp>1525656044")
 -- MAGIC 
 -- MAGIC transaction_date = transaction_df.join(short_block, transaction_df.block_hash==short_block.hash_block, "inner").drop("hash_block")
 -- MAGIC transaction_date_transfer = transaction_date.join(transfer_df, transaction_date.hash==transfer_df.transaction_hash, "inner").drop("hash")
--- MAGIC transaction_date_transfer = transaction_date_transfer.withColumn('timestamp_unix',from_unixtime(col("timestamp"),"MM-dd-yyyy"))
--- MAGIC transaction_date_transfer = transaction_date_transfer.groupBy('timestamp_unix').sum("transaction_count")
--- MAGIC q14_table = transaction_date_transfer.sort(col("timestamp_unix"))
+-- MAGIC transaction_date_transfer = transaction_date_transfer.withColumn('timestamp_convert', f.date_format(transaction_date_transfer.timestamp.cast(dataType=t.TimestampType()), "yyyy-MM-dd"))
+-- MAGIC transaction_date_transfer = transaction_date_transfer.groupBy('timestamp_convert').sum("transaction_count")
+-- MAGIC q14_table = transaction_date_transfer.sort(col("timestamp_convert").desc())
 
 -- COMMAND ----------
 
