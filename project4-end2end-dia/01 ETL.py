@@ -78,16 +78,12 @@ print(silver_path)
 # COMMAND ----------
 
 #start first by filtering out the unrelated token only take ERC20 tokens from token price usd 
-ERC20_token_table = spark.sql("select contract_address, name from ethereumetl.token_prices_usd where asset_platform_id== 'ethereum' ").distinct()
-
-# COMMAND ----------
-
-ERC20_token_table.count()
+ERC20_token_table = spark.sql("select contract_address, name from ethereumetl.token_prices_usd where asset_platform_id== 'ethereum' ").distinct().cache()
 
 # COMMAND ----------
 
 #we also want the token_transfer table because it has token information
-token_transfer_df = spark.sql("select token_address,transaction_hash,to_address from ethereumetl.token_transfers")
+token_transfer_df = spark.sql("select token_address,transaction_hash,to_address from ethereumetl.token_transfers").cache()
 
 # COMMAND ----------
 
@@ -97,7 +93,7 @@ token_transfer_df = spark.sql("select token_address,transaction_hash,to_address 
 # COMMAND ----------
 
 ## this table is used to filter out the token contract address from to address
-ERC20_contract = spark.sql("select address from ethereumetl.silver_contracts")
+ERC20_contract = spark.sql("select address from ethereumetl.silver_contracts").cache()
 
 # COMMAND ----------
 
@@ -110,7 +106,7 @@ ERC20_contract = spark.sql("select address from ethereumetl.silver_contracts")
 
 # COMMAND ----------
 
-bronze_init =token_transfer_df.join(ERC20_token_table, token_transfer_df.token_address== ERC20_token_table.contract_address, "inner").drop("contract_address").distinct()
+bronze_init =token_transfer_df.join(ERC20_token_table, token_transfer_df.token_address== ERC20_token_table.contract_address, "inner").drop("contract_address").distinct().cache()
 
 
 # COMMAND ----------
@@ -150,43 +146,27 @@ silver_df = silver_df.withColumn("count", silver_df["count"].cast(IntegerType())
 
 # COMMAND ----------
 
-display(silver_df.limit(3))
-
-# COMMAND ----------
-
-spark.conf.set("spark.sql.shuffle.partitions", "20")
-
-# COMMAND ----------
-
-spark.conf.get("spark.sql.shuffle.partitions")
-
-# COMMAND ----------
-
-silver_df = silver_df.repartition(8)
-
-# COMMAND ----------
-
 # MAGIC %md ## Saving table where transaction count = 1
 # MAGIC 
 # MAGIC About 71% of the total data, 52 million
 
 # COMMAND ----------
 
-from pyspark.sql.functions import col
-silver_count_one = silver_df.filter(col('count') < 2)
+# from pyspark.sql.functions import col
+# silver_count_one = silver_df.filter(col('count') < 2)
 
 # COMMAND ----------
 
-spark.sql("drop table if exists g08_db.silver_count_one")
-silver_count_one.write.format("delta").saveAsTable("g08_db.silver_count_one")
+# spark.sql("drop table if exists g08_db.silver_count_one")
+# silver_count_one.write.format("delta").saveAsTable("g08_db.silver_count_one")
 
 # COMMAND ----------
 
-silver_count_one_path = BASE_DELTA_PATH+"silver_count_one/"
+# silver_count_one_path = BASE_DELTA_PATH+"silver_count_one/"
 
 # COMMAND ----------
 
-silver_count_one.write.format('delat').option("mergeSchema", "true").save(silver_count_one_path)
+# silver_count_one.write.format('delat').option("mergeSchema", "true").save(silver_count_one_path)
 
 # COMMAND ----------
 
@@ -194,20 +174,20 @@ silver_count_one.write.format('delat').option("mergeSchema", "true").save(silver
 
 # COMMAND ----------
 
-silver_top_10 = silver_df.sort(col('count').desc())
+# silver_top_10 = silver_df.sort(col('count').desc())
 
 # COMMAND ----------
 
-spark.sql("drop table if exists g08_db.silver_top_10")
-silver_top_10.write.format("delta").saveAsTable("g08_db.silver_top_10")
+# spark.sql("drop table if exists g08_db.silver_top_10")
+# silver_top_10.write.format("delta").saveAsTable("g08_db.silver_top_10")
 
 # COMMAND ----------
 
-silver_top_10_path = BASE_DELTA_PATH+"silver_top_10/"
+# silver_top_10_path = BASE_DELTA_PATH+"silver_top_10/"
 
 # COMMAND ----------
 
-silver_top_10.write.format('delat').option("mergeSchema", "true").save(silver_top_10_path)
+# silver_top_10.write.format('delat').option("mergeSchema", "true").save(silver_top_10_path)
 
 # COMMAND ----------
 
@@ -215,20 +195,20 @@ silver_top_10.write.format('delat').option("mergeSchema", "true").save(silver_to
 
 # COMMAND ----------
 
-silver_modeling = silver_df.filter(col('count') > 1)
+# silver_modeling = silver_df.filter(col('count') > 1)
 
 # COMMAND ----------
 
-spark.sql("drop table if exists g08_db.silver_modeling")
-silver_modeling.write.format("delta").saveAsTable("g08_db.silver_modeling")
+# spark.sql("drop table if exists g08_db.silver_modeling")
+# silver_modeling.write.format("delta").saveAsTable("g08_db.silver_modeling")
 
 # COMMAND ----------
 
-silver_modeling_path = BASE_DELTA_PATH+"silver_modeling/"
+# silver_modeling_path = BASE_DELTA_PATH+"silver_modeling/"
 
 # COMMAND ----------
 
-silver_modeling.write.format('delat').option("mergeSchema", "true").save(silver_modeling_path)
+# silver_modeling.write.format('delat').option("mergeSchema", "true").save(silver_modeling_path)
 
 # COMMAND ----------
 
