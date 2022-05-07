@@ -1,11 +1,11 @@
 # Databricks notebook source
 ## Enter your group specific information here...
 
-GROUP='GXX'   # CHANGE TO YOUR GROUP NAME format Gxx
+GROUP='G08'   # CHANGE TO YOUR GROUP NAME format Gxx
 
 if GROUP not in ["G01","G02","G03","G04","G05","G06","G07","G08","G09","G10","G11","G12","G13","G14"]:
-  print("DONT FORGET TO SET YOUR GROUP NAME IN includes/configuration NOTEBOOK")
-  dbutils.notebook.exit(json.dumps({"exit_code": "BAD GROUP NAME"}))
+    print("DONT FORGET TO SET YOUR GROUP NAME IN includes/configuration NOTEBOOK")
+    dbutils.notebook.exit(json.dumps({"exit_code": "BAD GROUP NAME"}))
 
 # COMMAND ----------
 
@@ -18,7 +18,7 @@ Enter any project wide configuration here...
 """
 
 # Some configuration of the cluster
-spark.conf.set("spark.sql.shuffle.partitions", "32")  # Configure the size of shuffles the same as core count on your cluster
+spark.conf.set("spark.sql.shuffle.partitions", "auto")  # Configure the size of shuffles the same as core count on your cluster
 spark.conf.set("spark.sql.adaptive.enabled", "true")  # Spark 3.0 AQE - coalescing post-shuffle partitions, converting sort-merge join to broadcast join, and skew join optimization
 spark.conf.set("spark.databricks.io.cache.enabled", "true") # set the delta file cache to true
 
