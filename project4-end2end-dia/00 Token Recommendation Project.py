@@ -113,7 +113,7 @@ assert json.loads(result_etl)["exit_code"] == "OK", "ETL Failed!" # Check to see
 # COMMAND ----------
 
 # run link to the EDA notebook
-result_mlops = dbutils.notebook.run("02 EDA", 0, {"00.Wallet_Address":wallet_address, "01.Start_Date":start_date, "02.Fraction_Of_Data_Used_For_Model":fractional})
+result_eda = dbutils.notebook.run("02 EDA", 0, {"00.Wallet_Address":wallet_address, "01.Start_Date":start_date, "02.Fraction_Of_Data_Used_For_Model":fractional})
 
 # Check for success
 assert json.loads(result_eda)["exit_code"] == "OK", "EDA Failed!" # Check to see that it worked
