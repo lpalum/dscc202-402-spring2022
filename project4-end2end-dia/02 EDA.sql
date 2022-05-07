@@ -75,7 +75,7 @@ show tables;
 -- COMMAND ----------
 
 -- MAGIC %md
--- MAGIC The Maximum block number is 14044000
+-- MAGIC The Maximum block number is 14044000, date of block is 2022-01-20
 
 -- COMMAND ----------
 
@@ -165,40 +165,31 @@ show tables;
 
 -- COMMAND ----------
 
-select count(distinct(*)) from ethereumetl.token_transfers
+-- MAGIC %python
+-- MAGIC # token_transfers = spark.sql('select * from ethereumetl.token_transfers')
+-- MAGIC # unique_transfers_count = token_transfers.distinct().count()
+-- MAGIC # token_count = token_transfers.groupBy("token_address", "to_address").count().filter(col('count')==1).count()
+-- MAGIC # percentage = token_count/unique_transfers
+-- MAGIC # print(percentage)
 
 -- COMMAND ----------
 
 -- MAGIC %python
--- MAGIC token_original = spark.sql('select * from ethereumetl.token_transfers').dropDuplicates()
-
--- COMMAND ----------
-
--- MAGIC %python
--- MAGIC token_original.count()
-
--- COMMAND ----------
-
--- MAGIC %python
--- MAGIC # to address from token transfer 
--- MAGIC 
--- MAGIC token_transfers = spark.sql('select to_address from ethereumetl.token_transfers')
--- MAGIC #total number of transaction to new address 
+-- MAGIC # take all observations from token transfer
+-- MAGIC token_transfers = spark.sql('select * from ethereumetl.token_transfers')
+-- MAGIC #for demoninator we only interested in unique token transfer
+-- MAGIC unique_transfers = token_transfers.distinct().count()
+-- MAGIC #number of address only have 1 transaction. 
 -- MAGIC token_count = token_transfers.groupBy("to_address").count().filter(col('count')==1).count()
 -- MAGIC #total transaction 
--- MAGIC total_transaction = token_transfers.count()
--- MAGIC percentage = token_count/total_transaction 
+-- MAGIC percentage = token_count/unique_transfers
 -- MAGIC print(percentage)
 -- MAGIC # print(f"{100*transfer_is_1_count/token_transfers.distinct().count()}%")
 
 -- COMMAND ----------
 
-token_transfers.count()
-
--- COMMAND ----------
-
--- MAGIC %md 29
--- MAGIC 9.52785% of the ERC20 transfers are sent to new addresses
+-- MAGIC %md 
+-- MAGIC 6.52785% of the ERC20 transfers are sent to new addresses
 
 -- COMMAND ----------
 
@@ -403,8 +394,8 @@ token_transfers.count()
 -- MAGIC blocks = spark.sql("select * from ethereumetl.blocks where timestamp>1525656044")
 -- MAGIC blocks_clean = blocks.withColumn('timestamp_convert', f.date_format(blocks.timestamp.cast(dataType=t.TimestampType()), "yyyy-MM-dd"))
 -- MAGIC blocks_clean.drop('timestamp')
--- MAGIC blocks_clean = blocks_clean.groupBy('timestamp_convert').count()
--- MAGIC q13_table = blocks_clean.sort(col("timestamp_convert").desc())
+-- MAGIC blocks_clean = blocks_clean.groupBy('timestamp_convert').sum('transaction_count')
+-- MAGIC q13_table = blocks_clean.sort(col("timestamp_convert").asc())
 -- MAGIC 
 -- MAGIC 
 -- MAGIC # blocks_clean = blocks_clean.withColumn('timestamp', f.date_format(blocks_clean.timestamp.cast(dataType=t.TimestampType()), "yyyy-MM-dd"))
@@ -436,25 +427,8 @@ token_transfers.count()
 -- MAGIC transaction_date = transaction_df.join(short_block, transaction_df.block_hash==short_block.hash_block, "inner").drop("hash_block")
 -- MAGIC transaction_date_transfer = transaction_date.join(transfer_df, transaction_date.hash==transfer_df.transaction_hash, "inner").drop("hash")
 -- MAGIC transaction_date_transfer = transaction_date_transfer.withColumn('timestamp_convert', f.date_format(transaction_date_transfer.timestamp.cast(dataType=t.TimestampType()), "yyyy-MM-dd"))
--- MAGIC transaction_date_transfer = transaction_date_transfer.groupBy('timestamp_convert').sum("transaction_count")
--- MAGIC q14_table = transaction_date_transfer.sort(col("timestamp_convert").desc())
-
--- COMMAND ----------
-
--- MAGIC %python
--- MAGIC from pyspark.sql.functions import col
--- MAGIC # here is the how you can join three tables:
--- MAGIC # inner join transfer_df and transaction_df: we use "transaction_hash" from transfer_df and "hash" from transaction_df
--- MAGIC # inner join short_bock and transaction_df: we use "hash_block" from short_block and "block_hash" from transaction_df (keep in mind I rename hash from block table to hash_block)
--- MAGIC 
--- MAGIC # you then joined all three tables.  
--- MAGIC 
--- MAGIC # inter_df = transfer_df.join(transaction_df,transaction_df.hash == transfer_df.transaction_hash, "inner")
--- MAGIC # final_df = inter_df.join(short_block, inter_df.block_hash == short_block.hash_block,"inner")
--- MAGIC # final_df = final_df.groupBy("timestamp").count()
--- MAGIC # final_df = final_df.sort(col("timestamp"))
--- MAGIC 
--- MAGIC # final_df.write.format('delta').saveAsTable("g08_db.q14_table")
+-- MAGIC transaction_date_transfer = transaction_date_transfer.groupBy('timestamp_convert').count()
+-- MAGIC q14_table = transaction_date_transfer.sort(col("timestamp_convert").asc())
 
 -- COMMAND ----------
 
