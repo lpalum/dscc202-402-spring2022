@@ -29,10 +29,10 @@
 # COMMAND ----------
 
 # Grab the global variables
-wallet_address,start_date = Utils.create_widgets()
-print(wallet_address,start_date)
-spark.conf.set('wallet.address',wallet_address)
-spark.conf.set('start.date',start_date)
+# wallet_address,start_date = Utils.create_widgets()
+# print(wallet_address,start_date)
+# spark.conf.set('wallet.address',wallet_address)
+# spark.conf.set('start.date',start_date)
 
 # COMMAND ----------
 
